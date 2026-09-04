@@ -1,8 +1,8 @@
 {
-  "name": "spms-fe",
+  "name": "cpes-fe",
   "version": "0.0.1",
-  "description": "Strategic Performance Monitoring System",
-  "productName": "SPMS",
+  "description": "Course Program Evaluation System (CPES) Frontend",
+  "productName": "CPES",
   "author": "azaraelcorpin <azarael.corpin@msugensan.edu.ph>",
   "private": true,
   "scripts": {
@@ -40,7 +40,9 @@
     "eslint-config-prettier": "^8.1.0",
     "eslint-plugin-vue": "^9.0.0",
     "postcss": "^8.4.14",
-    "prettier": "^2.5.1"
+    "prettier": "^2.5.1",
+    "sass": "^1.104.0",
+    "sass-embedded": "^1.104.0"
   },
   "engines": {
     "node": "^18 || ^16 || ^14.19",

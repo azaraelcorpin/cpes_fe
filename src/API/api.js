@@ -3,11 +3,14 @@ import Swal from 'sweetalert2';
 import CryptoJS from 'crypto-js';
 import { useCookies } from "vue3-cookies";
 import axios from 'axios'
+const api_url = process.env.VUE_APP_API_URL;
 
 const { cookies } = useCookies();
-const api_url = process.env.VUE_APP_SPMS_API_URL;
 export default {
-  async getAuthorization(_data){
+  async getAuthorization(route, _data) {
+    if(!route){
+      return null;
+    }
     
    if(!_data){
     if(!cookies.get('_UID_')){
@@ -25,8 +28,12 @@ export default {
           });          
       return null;
     }
+    else{
+      _data = cookies.get('_UID_');
+    }
   }
-     let key = process.env.VUE_APP_PCR_KEY;
+  _data.route = route;
+     let key = process.env.VUE_APP_KEY;
     key = CryptoJS.enc.Utf8.parse(key); // replace with your own secret key
     let iv = CryptoJS.lib.WordArray.random(16); // generate a random 16-byte IV
     const jsonData = JSON.stringify( _data??(cookies.get('_UID_')));
@@ -69,34 +76,19 @@ export default {
     
   },
 
-
-  ///// test 
-  async test(userEmail) {
-    var url = api_url+'/user/all'
-    const config = await this.getAuthorization(userEmail);
-    const body = { }
-    try {      
-      const response = await axios.post(url, body, config);      
-      if (response && response.data && response.status == 200) {
-        return response.data;
-      } else{
-        console.log(response);
-        return {error:response}
-      }
-    } catch (error) {
-      console.log(error.response);
-      this.validateResponse(error.response)
-      return { error: error.response }
-    }
-  },
+  //NOTE: getAuthorization() requires a route parameter to be passed in order to validate the session. If the route parameter is not provided, the function will return null and not perform any authorization checks.
 
     ///// generate session Id
-    async generateSessionId(userEmail) {
-      var url = api_url+'/user/getSessionId'
-      const config = await this.getAuthorization(userEmail);
-      const body = { }
-      try {      
+    async generateSessionId(SID) {
+      var path = '/api/cpes-setting/users/getSessionId'
+      var url = `${api_url}${path}`
+      console.log('SID',SID)
+      const config = await this.getAuthorization(path,SID);
+      console.log('config',config)
+      const body = {}
+      try { 
         const response = await axios.post(url, body, config);
+        console.log('response',response)
         if (response && response.data && response.status == 200) {
           return response.data;
         } else{
@@ -109,252 +101,27 @@ export default {
       }
     },  
 
-        ///// new User
-    async newUser(param) {
-      var url = api_url+'/user/new'
-      const config = await this.getAuthorization();
-      const body = {
-        email:param.email,
-        userName:param.userName,
-        userType:param.userType,
-        officeId:param.userType === 'OFFICE_STAFF'? param.officeId.id:null,
-        privileges:param.privileges,
-       }
-      try {      
+// get all users
+    async getAllUsers() {
+      var path = '/api/cpes-setting/users'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {}
+      try {   
         const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('newUser Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },  
 
-    //// update User
-    async updateUser(param) {
-      var url = api_url+'/user/update'
-      const config = await this.getAuthorization();
-      const body = {
-        email:param.email,
-        userName:param.userName,
-        userType:param.userType,
-        officeId:param.userType === 'OFFICE_STAFF'? param.officeId.id:null,
-        privileges:param.privileges,
-        status:param.status,
-        email_old:param.email_old,
-       }
-      try {      
-        const response = await axios.post(url, body, config);
         if (response && response.data && response.status == 200) {
           return response.data;
         } else{
-          console.log('Update User Error');
+          console.log('getAllUsers Error');
           return {error:response}
         }
       } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
+        console.log('error',error.message);
+        return { error:error }
       }
-    },      
+    },
 
-       ///// Delete User
-    async deleteUser(param) {
-      var url = api_url+'/user/delete'
-      const config = await this.getAuthorization();
-      const body = {
-        email:param.email,
-       }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('newUser Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },  
-
-    ///// getAllUser 
-    async getAllUser() {
-      var url = api_url+'/user/all'
-      const config = await this.getAuthorization();
-      const body = { }
-      try {      
-        const response = await axios.post(url, body, config);      
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log(response);
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        this.validateResponse(error)
-        return { error: error.response }??error
-      }
-    },    
-
-    ///// getAllOffice 
-    async getAllOffice() {
-      var url = api_url+'/office/all'
-      const config = await this.getAuthorization();
-      const body = { }
-      try {      
-        const response = await axios.post(url, body, config);      
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log(response);
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error);
-        this.validateResponse(error)
-        return { error: error.response }??error
-      }
-    },   
-    
-    ///// getOfficeData
-    async getOfficeData(id) {
-      var url = api_url+'/office/getOfficeData'
-      const config = await this.getAuthorization();
-      const body = { 
-        id:id
-      }
-      try {      
-        const response = await axios.post(url, body, config);      
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log(response);
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error);
-        this.validateResponse(error)
-        return { error: error.response }??error
-      }
-    },  
-
-    ///// new User
-    async newOffice(param) {
-      var url = api_url+'/office/new'
-      const config = await this.getAuthorization();
-      const body = {
-        code:param.code,
-        description:param.description,
-        is_sector:param.is_sector.val,
-        topOfficeId:param.hasTopOffice?param.topOfficeId.id:null,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('newOffice Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },      
-
-    //// update Office
-    async updateOffice(param) {
-      var url = api_url+'/office/update'
-      const config = await this.getAuthorization();
-      const body = {
-        id:param.id,
-        code:param.code,
-        description:param.description,
-        is_sector:param.is_sector.val,
-        topOfficeId:param.hasTopOffice?param.topOfficeId.id:null,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('Update Office Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },       
-    
-    ///// Delete Office
-    async deleteOffice(param) {
-      var url = api_url+'/office/delete'
-      const config = await this.getAuthorization();
-      const body = {
-        id:param.id,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('deleteOffice Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },  
-
-    ///// getAllPcrSchedule 
-    async getAllPcrSchedule() {
-      var url = api_url+'/pcr_schedule/all'
-      const config = await this.getAuthorization();
-      const body = { }
-      try {      
-        const response = await axios.post(url, body, config);      
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log(response);
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error);
-        this.validateResponse(error)
-        return { error: error.response }??error
-      }
-    },    
-
-    ///// new PCR SCHED
-    async newSched(param) {
-      var url = api_url+'/pcr_schedule/new'
-      const config = await this.getAuthorization();
-      const body = {
-        dateStart:this.dateEN_US(param.dateStart),
-        dateEnd:this.dateEN_US(param.dateEnd),
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('newScedule Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },  
     /**
      * @param {String} pdate
      * @returns String Date with timezone en-US
@@ -379,162 +146,4 @@ export default {
         return `${formattedDate[4].value}-${formattedDate[0].value}-${formattedDate[2].value}T${formattedDate[6].value}:${formattedDate[8].value}:${formattedDate[10].value}.${formattedDate[12].value}Z`;
     },
 
-    ///// update PCR SCHED
-    async updateSched(param) {
-      var url = api_url+'/pcr_schedule/update'
-      console.log(this.dateEN_US(new Date()))
-      const config = await this.getAuthorization();
-      const body = {
-        dateStart:this.dateEN_US(param.dateStart),
-        dateEnd:this.dateEN_US(param.dateEnd),
-        id:param.id,
-        status:param.status,
-        }
-        console.log('@Body',param)
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('Update Schedule Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },      
-
-    ///// Delete Sched
-    async deleteSched(param) {
-      var url = api_url+'/pcr_schedule/delete'
-      const config = await this.getAuthorization();
-      const body = {
-        id:param.id,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('delete Sched Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },      
-
-    ///// new Employee
-    async newEmployee(param) {
-      var url = api_url+'/employee/new'
-      const config = await this.getAuthorization();
-      const body = {
-        lname:param.lname,
-        fname:param.fname,
-        mname:param.mname,
-        email:param.email,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('newEmployee Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },  
-
-    //// update Employee
-    async updateEmployee(param) {
-      var url = api_url+'/employee/update'
-      const config = await this.getAuthorization();
-      const body = {
-        id:param.id, 
-        lname:param.lname,
-        fname:param.fname,
-        mname:param.mname,
-        email:param.email,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('Update Employee Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },      
-
-        ///// Delete Employee
-    async deleteEmployee(param) {
-      var url = api_url+'/employee/delete'
-      const config = await this.getAuthorization();
-      const body = {
-        id:param.id,
-        }
-      try {      
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log('DelEmployee Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        return { error: error.response }
-      }
-    },  
-
-    ///// getAllEmployee 
-    async getAllEmployee() {
-      var url = api_url+'/employee/all'
-      const config = await this.getAuthorization();
-      const body = { }
-      try {      
-        const response = await axios.post(url, body, config);      
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log(response);
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        this.validateResponse(error)
-        return { error: error.response }??error
-      }
-    },    
-
-    ///// searchEmployee 
-    async searchEmployee(val) {
-      var url = api_url+'/employee/search'
-      const config = await this.getAuthorization();
-      const body = {
-        empName:val
-       }
-      try {      
-        const response = await axios.post(url, body, config);      
-        if (response && response.data && response.status == 200) {
-          return response.data;
-        } else{
-          console.log(response);
-          return {error:response}
-        }
-      } catch (error) {
-        console.log(error.response);
-        this.validateResponse(error)
-        return { error: error.response }??error
-      }
-    },     
 }

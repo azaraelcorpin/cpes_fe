@@ -12,7 +12,25 @@
       Mindanao State University
     </div>
       <div  style="position: absolute;margin-bottom: 30%;  font-size: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: bold; color: black;">
-      Strategic Performance Monitoring System
+      Course Program Evaluation System
+      </div>
+      <!-- combobox for role selection -->
+       <div style="position: absolute;margin-bottom: 10%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <q-select
+          v-model="role"
+          :options="[
+            { label: 'Admin', value: 'admin' },
+            { label: 'Student', value: 'student' },   
+            { label: 'Faculty', value: 'faculty' },
+            { label: 'Chairperson', value: 'chairperson' },                         
+            { label: 'Dean', value: 'dean' },
+            { label: 'VCAA/CCSID', value: 'admin' }
+          ]"
+          label="Select Role"
+          outlined
+          dense
+          style="width: 200px;"
+        />
       </div>
       <div  style="position: absolute;margin-bottom: -30%;" >
         <q-btn @click="test('hr@msugensan.edu.ph')">
@@ -64,11 +82,12 @@ export default{
             loading.value=true;
             const userData = decodeCredential(response.credential)
             let SID = {};
-            SID.userEmail = userData.email;
+            SID.email = userData.email;
             SID.name = userData.name;
-            SID.picture = userData.picture;    
-            console.log(!SID.userEmail.includes('@msugensan.edu.ph'))
-            if(!SID.userEmail.includes('@msugensan.edu.ph'))
+            SID.picture = userData.picture; 
+            SID.role = role.value;  
+            console.log(!SID.email.includes('@msugensan.edu.ph'))
+            if(!SID.email.includes('@msugensan.edu.ph'))
               {
                 myDialog.negative($q,'Unauthorized','Account Not Found')
                 loading.value=false;
@@ -82,17 +101,16 @@ export default{
                     throw new Error(response.error.response.data.message);
                     throw new Error(response.error.message);
                   }
-                  if(response.status === 'OK'){
-                      let sid=response.session.sessionId;
-                      SID.sid=sid
-                      cookies.set('_UID_',JSON.stringify(SID),'1d'); 
+                  if(response.success){
+                      let sid=response.data;
+                      
+                      cookies.set('_UID_',JSON.stringify(sid),'1d'); 
                       // put in localStorage the userRoles from response ↓↓↓
                       // localStorage.clear();
                       // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))    
 
                       localStorage.clear();
-                      localStorage.setItem("userRoles",JSON.stringify(response.session.ROLES))    
-                      localStorage.setItem("officesAndRoles",JSON.stringify(response.session.officesAndRoles))                
+                      localStorage.setItem("userRoles",JSON.stringify(sid.role))                  
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;
@@ -153,6 +171,7 @@ export default{
                 }
               }
           }
+          const role = ref('admin');
           
     return{
         callback,
@@ -160,6 +179,7 @@ export default{
         router,
         cookies ,
         loading,
+        role,
     }
   },
   mounted(){

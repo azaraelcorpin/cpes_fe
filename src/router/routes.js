@@ -16,7 +16,7 @@ const routes = [
   {
     path: '/dashboard',
     name:'dashboard',
-    component: () => import('components/SelectEmployee.vue'),
+    component: () => import('pages/sysAdmin/SysAdmin.vue'),
     meta:{
       title:'Dashboard',
       roles:[]
@@ -30,7 +30,7 @@ const routes = [
     name:'myPCR',
     component: () => import('pages/TreeSample.vue'),
     meta:{
-      title:'My PCR',
+      title:'My CPES',
       roles:['INDIVIDUAL','OFFICE_HEAD']
     },
     icon:'person',
@@ -84,7 +84,7 @@ const routes = [
         path: '/pcr_sched',
         component: () => import('pages/PMT/ScheduleMgt.vue'),
         meta:{
-          title:'PCR Schedule',
+          title:'CPES Schedule',
         },
         icon:'schedule',
         visible:true,
@@ -168,7 +168,7 @@ const routes = [
     children:[
       {
         path: '/user',
-        component: () => import('pages/sysAdmin/UserMgt.vue'),
+        component: () => import('pages/cpes_settings/UserMgt.vue'),
         meta:{
           title:'Users',
         },

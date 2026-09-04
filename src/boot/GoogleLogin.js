@@ -20,7 +20,7 @@ export default boot(({ app }) => {
     // response_type: 'code', 
     // prompt: 'consent', 
     // fetch_basic_profile: true,
-    // plugin_name:'SPMS client'
+    // plugin_name:'CPES client'
     // }
     )
 })

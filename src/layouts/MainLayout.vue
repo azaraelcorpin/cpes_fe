@@ -13,8 +13,8 @@
 
         <q-toolbar-title>
           <div :style="{marginLeft:miniState?'0':'150px'}">
-            <div v-if="$q.screen.width >= 550" >Strategic Performance Management System</div>
-            <div v-else >SPMS</div>
+            <div v-if="$q.screen.width >= 550" >Course and Program Evaluation System</div>
+            <div v-else >CPES</div>
           </div>
         </q-toolbar-title>
         <q-btn @click="asDev(true)">
@@ -35,8 +35,8 @@
                   <img v-if="cookies.isKey('_UID_') && cookies.get('_UID_').picture" :src="profilePicture()">
                   <q-icon name="person"/>
                 </q-avatar>
-                <div class="text-subtitle1 q-mt-md q-mb-xs">{{ cookies.isKey('_UID_')?cookies.get('_UID_').name:'Un Identified' }}</div>
-                <div >{{ cookies.isKey('_UID_')?cookies.get('_UID_').userEmail:'Un Identefied' }}</div>
+                <div class="text-subtitle1 q-mt-md q-mb-xs">{{ cookies.isKey('_UID_')?cookies.get('_UID_').fullname:'Un Identified' }}</div>
+                <div >{{ cookies.isKey('_UID_')?cookies.get('_UID_').email:'Un Identefied' }}</div>
                 <q-btn
                   color="black"
                   label="Logout"
@@ -56,7 +56,7 @@
     <q-footer reveal elevated style="background-color: #520608;">
         <q-toolbar class="justify-between">
           <div>MSU GenSan - ICTO</div>
-          <div>SPMS v{{ $version}}</div>
+          <div>CPES v{{ $version}}</div>
         </q-toolbar>
         
       </q-footer>

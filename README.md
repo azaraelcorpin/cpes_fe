@@ -1,6 +1,6 @@
-# SPMS (spms-fe)
+# CPES (cpes-fe)
 
-Strategic Performance Monitoring System
+Course and Program Evaluation System
 
 ## Install the dependencies
 ```bash
