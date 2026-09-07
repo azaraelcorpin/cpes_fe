@@ -182,6 +182,107 @@ export default {
       }
     },
 
+    //. get all rating scales
+    async getAllRatingScales() {
+      var path = '/api/cpes-setting/rating-scales'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {}
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getAllRatingScales Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    //update rating scale
+    async updateRatingScale(scale) {
+      var path = '/api/cpes-setting/rating-scales/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = scale
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('updateRatingScale Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    // create rating-scale-items
+    async createRatingScaleItem(scale_item) {
+      var path = '/api/cpes-setting/rating-scale-items/create'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = scale_item
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('createRatingScaleItem Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+    
+
+    // update rating-scale-items
+    async updateRatingScaleItem(scale_item) {
+      var path = '/api/cpes-setting/rating-scale-items/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = scale_item
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('updateRatingScaleItems Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    // delete rating-scale-items
+    async deleteRatingScaleItem(scale_item) {
+      var path = '/api/cpes-setting/rating-scale-items/delete'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = scale_item
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('deleteRatingScaleItems Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
     /**
      * @param {String} pdate
      * @returns String Date with timezone en-US
