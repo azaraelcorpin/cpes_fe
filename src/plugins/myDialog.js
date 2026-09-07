@@ -1,3 +1,4 @@
+
 export default{
         negative($q,title,message){
           return  $q.dialog({
@@ -48,7 +49,8 @@ export default{
             })
         },
         confirm($q,title,message){
-            return $q.dialog({
+            return new Promise((resolve, reject) => {
+             $q.dialog({
             title: '<span class="material-icons" style="color:#F2C037; font-size:36px;margin:5px">question_mark</span>' + title,
             message: message,
             html:true,
@@ -63,6 +65,14 @@ export default{
                 push: true,
                 color: 'negative'
                 },
-            })
+            }).onOk(() => {
+                resolve(true);
+            }).onCancel(() => {
+                resolve(false);
+            }).onDismiss(() => {
+                resolve(false);
+            }); 
+            });
+            
         },
 }

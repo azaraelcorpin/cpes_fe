@@ -110,10 +110,70 @@ export default {
       try {   
         const response = await axios.post(url, body, config);
 
-        if (response && response.data && response.status == 200) {
+        if (response && response.data && response.data.success) {
           return response.data;
         } else{
           console.log('getAllUsers Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+// get Users by role
+    async getUsersByRole(role) {
+      var path = '/api/cpes-setting/users/getUsersByRole'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {role:role}
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getUsersByRole Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+// create user
+    async createUser(user) {
+      var path = '/api/cpes-setting/users/create'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = user
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('createUser Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    // update user
+    async updateUser(user) {
+      var path = '/api/cpes-setting/users/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = user
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('updateUser Error');
           return {error:response}
         }
       } catch (error) {
