@@ -248,7 +248,7 @@ export default {
     },
 
     // Triggers confirmation overlay block
-    confirmSave () {
+   async confirmSave () {
 
 
       if (this.form.items.length === 0) {
@@ -256,114 +256,52 @@ export default {
         return
       }
 
-      this.$q.dialog({
-        title: 'Confirm Save',
-        message: 'Are you sure you want to save this rating scale framework?',
-        cancel: true,
-        persistent: true
-      }).onOk(() => {
+     let confirmation = await myDialog.confirm(this.$q, 'Confirm Save', 'Are you sure you want to save this rating scale framework?')
+      if (!confirmation) return
+
         console.log('Dispatch API payload request data package:', this.form)
 
         if(this.selectedScaleId) {
           // Update existing scale
           let tmpScale = {...this.form.scale}
-          //drop the items of scale
-          delete tmpScale.items
-          api.updateRatingScale(tmpScale)
-            .then(response => {
-              if (response.success) {
-                // update the items in existingScales to reflect the updated data
-               let items = this.form.items.map(item => ({ ...item })) // create a copy of the items
-                // update each item in the database with the new rating_scale_id    
+          try{
+            let response = await api.updateRatingScaleProfile(tmpScale)
+            if(!response.success){
+              myDialog.negative(this.$q, 'Update Failed', response.error.response.data.message || 'An error occurred while updating the rating scale framework')
+            }else{
+              myDialog.positive(this.$q, 'Update Successful', 'Rating scale framework updated successfully!')
+              this.isFormOpen = false
+              this.selectedScaleId = null
+              this.loadAllRatingScales() // Refresh the list after update
+              this.form = { scale: { name: '', description: '' }, items: [] } // Reset form
+            }
 
-                // create a list of unsuccessful items to log errors
-                let failedItems = []
-                for (let item of items) {
-                  console.log('Dispatching item update/create request:', item)
-                    if(item._id){
-                        api.updateRatingScaleItem(item).then(res => {
-                            if (!res.success) {
-                                failedItems.push(item.description);
-                                console.error('Failed to update item:', res.error)
-                            }
-                        }).catch(err => {
-                            failedItems.push(item.description);
-                            console.error('Error updating item:', err)
-                        })
-                    }else{
-                        api.createRatingScaleItem(item).then(res => {
-                            if (!res.success) {
-                                failedItems.push(item.description);
-                                console.error('Failed to create item:', res.error)
-                            }
-                        }).catch(err => {
-                            failedItems.push(item.description);
-                            console.error('Error creating item:', err)
-                        })
-                    }
-
-                }
-
-                // find the selected scale in existingScales and update its properties
-                let oldItems =  this.existingScales.find(scale => scale._id === this.selectedScaleId).items
-
-                //remove the old items from the existingScales
-                oldItems.forEach(oldItem => {
-                    let index = items.findIndex(newItem => newItem._id === oldItem._id)
-                    if (index === -1) {
-                      api.deleteRatingScaleItem(oldItem._id).then(res => {
-                          if (!res.success) {
-                              failedItems.push(oldItem.description);
-                              console.error('Failed to delete item:', res.error)
-                          }
-                      }).catch(err => {
-                          failedItems.push(oldItem.description);
-                          console.error('Error deleting item:', err)
-                      })
-                    }
-                })
-
-                // dialog to show if there is/are failed,
-                if(failedItems.length > 0){
-                    let stringItem = failedItems.join(', ')
-                    myDialog.negative(this.$q,'UPDATE FAILED','Items failed to update \n'+stringItem)
-                }
-
-                this.$q.notify({ type: 'positive', message: 'Rating scale framework updated successfully!' })
-                this.isFormOpen = false
-                this.selectedScaleId = null
-                this.form = { scale: { name: '', description: '' }, items: [] }
-                this.loadAllRatingScales() // Refresh the list after update
-              } else {
-                throw new Error(response.error.response.data.message || 'Failed to update rating scale framework')
-              }
-            })
-            .catch(error => {
-              console.error('Error updating rating scale framework:', error)
-              this.$q.notify({ type: 'negative', message: error.message || 'An error occurred while updating the rating scale framework' })
-            })
+          }catch(error){
+            console.error('Error updating rating scale framework:', error)
+            myDialog.negative(this.$q, 'Update Failed', error.message || 'An error occurred while updating the rating scale framework')
+          }
+          
         } else {
           // Create new scale
-        //   api.createRatingScale(this.form)
-        //     .then(response => {
-        //       if (response.success) {
-        //         this.$q.notify({ type: 'positive', message: 'Rating scale framework saved successfully!' })
-        //         this.isFormOpen = false
-        //         this.selectedScaleId = null
-        //         this.loadAllRatingScales() // Refresh the list after creation
-        //       } else {
-        //         throw new Error(response.error.response.data.message || 'Failed to save rating scale framework')
-        //       }
-        //     })
-        //     .catch(error => {
-        //       console.error('Error saving rating scale framework:', error)
-        //       this.$q.notify({ type: 'negative', message: error.message || 'An error occurred while saving the rating scale framework' })
-        //     })
-        }
+          let tmpScale = {...this.form.scale}
+          tmpScale.items = this.form.items.map(item => ({ ...item, rating_scale_id: null })) // Ensure new items have no parent ID yet
+          try{
+            let response = await api.createRatingScaleProfile(tmpScale)
+            if(!response.success){
+              myDialog.negative(this.$q, 'Creation Failed', response.error.response.data.message || 'An error occurred while creating the rating scale framework')
+            }else{
+              myDialog.positive(this.$q, 'Creation Successful', 'Rating scale framework created successfully!')
+              this.isFormOpen = false
+              this.selectedScaleId = null
+              this.loadAllRatingScales() // Refresh the list after creation
+              this.form = { scale: { name: '', description: '' }, items: [] } // Reset form 
+            }
         
-        this.isFormOpen = false
-        this.selectedScaleId = null
-      })
+          }catch(error){
+            console.error('Error creating rating scale framework:', error)
+            myDialog.negative(this.$q, 'Creation Failed', error.message || 'An error occurred while creating the rating scale framework')
+          }
+        }
     },
 
     // Additional methods for API integration can be added here

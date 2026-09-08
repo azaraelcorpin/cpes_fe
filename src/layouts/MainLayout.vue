@@ -276,7 +276,7 @@ export default defineComponent({
   /* Z-index */
   z-index: 1; /* Adjust the z-index as needed */
   pointer-events: none;
-  background: url( '../assets/MSU_Gensan_logo.png') no-repeat center center;
+  background: url( '../assets/MSU_Gensan_logoa.png') no-repeat center center;
   background-size: cover;
   opacity: 0.1;
   

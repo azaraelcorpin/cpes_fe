@@ -54,7 +54,16 @@ const routes = [
         },
         icon:'star',
         visible:true,
-      }
+      },
+      {
+        path: '/evaluation-settings',
+        component: () => import('pages/cpes_settings/EvaluationSetting.vue'),
+        meta:{
+          title:'Evaluation Settings',
+        },
+        icon:'settings',
+        visible:true,
+      },  
     ],
   },
 

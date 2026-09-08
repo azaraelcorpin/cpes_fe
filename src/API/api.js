@@ -101,6 +101,8 @@ export default {
       }
     },  
 
+    //#region Users and Rating Scales API
+
 // get all users
     async getAllUsers() {
       var path = '/api/cpes-setting/users'
@@ -222,39 +224,18 @@ export default {
       }
     },
 
-    // create rating-scale-items
-    async createRatingScaleItem(scale_item) {
-      var path = '/api/cpes-setting/rating-scale-items/create'
+    // create rating scale profile
+    async createRatingScaleProfile(profile) {
+      var path = '/api/cpes-setting/rating-scales/createProfile'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = scale_item
-      try {
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.data.success) {
-          return response.data;
-        } else {
-          console.log('createRatingScaleItem Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log('error',error.message);
-        return { error:error }
-      }
-    },
-    
-
-    // update rating-scale-items
-    async updateRatingScaleItem(scale_item) {
-      var path = '/api/cpes-setting/rating-scale-items/update'
-      var url = `${api_url}${path}`
-      const config = await this.getAuthorization(path);
-      const body = scale_item
+      const body = profile
       try {   
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
         } else{
-          console.log('updateRatingScaleItems Error');
+          console.log('createRatingScaleProfile Error');
           return {error:response}
         }
       } catch (error) {
@@ -263,18 +244,18 @@ export default {
       }
     },
 
-    // delete rating-scale-items
-    async deleteRatingScaleItem(scale_item) {
-      var path = '/api/cpes-setting/rating-scale-items/delete'
+    // update rating scale profile
+    async updateRatingScaleProfile(profile) {
+      var path = '/api/cpes-setting/rating-scales/updateProfile'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = scale_item
+      const body = profile
       try {   
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
         } else{
-          console.log('deleteRatingScaleItems Error');
+          console.log('updateRatingScaleProfile Error');
           return {error:response}
         }
       } catch (error) {
@@ -282,6 +263,86 @@ export default {
         return { error:error }
       }
     },
+
+    //#endregion Users and Rating Scales API
+
+
+    async createEvaluation(evaluation) {
+      var path = '/api/cpes-setting/evaluations/create'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = evaluation
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('createEvaluation Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async getAllEvaluations() {
+      var path = '/api/cpes-setting/evaluations'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {}
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getAllEvaluations Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async updateEvaluation(evaluation) {
+      var path = '/api/cpes-setting/evaluations/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = evaluation
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('updateEvaluation Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async getEvaluationProfile(evaluationId) {
+      var path = '/api/cpes-setting/indicators/getAllByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { _id: evaluationId }
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getEvaluationProfile Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
 
     /**
      * @param {String} pdate
