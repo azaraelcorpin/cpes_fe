@@ -421,7 +421,59 @@ export default {
 
     // Processing transactional dispatch data loops
     async saveStructure () {
-      this.$q.loading.show({ message: 'Syncing schema configurations components...' });
+
+        //check if any indicators or items are present
+        if (this.indicators.length === 0) {
+          myDialog.negative(this.$q, 'Validation Error', 'No indicators or items to save. Please add at least one indicator and item before saving.');
+          return;
+        }
+      
+        let confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Are you sure you want to save the current structure layout?');
+        if (!confirm) return;
+
+        //check each indicator and item for required fields
+        for (let ind of this.indicators) {
+          if (!ind.name || !ind.assigned_role || ind.sort_order === null || ind.sort_order === undefined) {
+            myDialog.negative(this.$q, 'Validation Error', 'Please fill in all required fields for indicators before saving.');
+            return;
+          }
+          for (let item of ind.items) {
+            if (!item.name || item.sort_order === null || item.sort_order === undefined) {
+              myDialog.negative(this.$q, 'Validation Error', 'Please fill in all required fields for items before saving.');
+              return;
+            }
+          }
+        }
+        //check each indicator and item for sort_order uniqueness
+        for (let ind of this.indicators) {
+          let indicatorSortOrders = new Set();
+          if (indicatorSortOrders.has(ind.sort_order)) {
+            myDialog.negative(this.$q, 'Validation Error', 'Duplicate sort order found in indicators. Please ensure each indicator has a unique sort order.');
+            return;
+          }
+          indicatorSortOrders.add(ind.sort_order);
+          let itemSortOrders = new Set();
+          for (let item of ind.items) {
+            if (itemSortOrders.has(item.sort_order)) {
+              myDialog.negative(this.$q, 'Validation Error', 'Duplicate sort order found in items. Please ensure each item has a unique sort order within its indicator.');
+              return;
+            }
+            itemSortOrders.add(item.sort_order);
+          }
+        }
+
+        let evalForm = this.evalDialog.form;
+        if (!evalForm.name || !evalForm.rating_scale_id || !evalForm.type) {
+          myDialog.negative(this.$q, 'Validation Error', 'Please ensure the evaluation instrument has a name, rating scale, and type before saving the structure.');
+          return;
+        }
+        evalForm.indicators = this.indicators;
+
+        // tobe continue ....
+
+
+
+        
       try {
         // Formulate deep structured JSON array payload package
         const payload = {
