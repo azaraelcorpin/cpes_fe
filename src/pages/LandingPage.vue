@@ -110,7 +110,12 @@ export default{
                       // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))    
 
                       localStorage.clear();
-                      localStorage.setItem("userRoles",JSON.stringify(sid.role))                  
+                      localStorage.setItem("userRoles",JSON.stringify(sid.role)) 
+                      if(sid.dept_code)
+                        localStorage.setItem("dept_code",JSON.stringify(sid.dept_code))                 
+                      if(sid.college_code)
+                        localStorage.setItem("college_code",JSON.stringify(sid.college_code))
+                      localStorage.setItem("dept_code",JSON.stringify('DCS'))
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;

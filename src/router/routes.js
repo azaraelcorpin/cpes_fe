@@ -25,14 +25,53 @@ const routes = [
     visible:true,
   },
 
+  //#region Evaluation Management 
+  
+{
+  path: '/manage-evaluations',
+    name: 'manageEvaluations',
+    meta: {
+      title: 'Evaluation Management',
+      roles: []
+    },
+    icon: 'assignment',
+    visible: true,
+    children: [
+            // 1. The Management List Page
+              {
+                path:'/course-evaluations',
+                name:'manageCourseEvaluations',
+                component: () => import('pages/course_eval/ManageCourseEvaluations.vue'),
+                meta: {
+                  title: 'Course Evaluations',
+                  roles: []
+                },
+                icon: 'assignment',
+                visible: true,
+              },
+
+              // 2. The Dedicated Details Workspace Page (Registered separately)
+              {
+                path: '/manage-evaluations/:id',
+                name: 'evaluationDetails',
+                component: () => import('pages/course_eval/EvaluationDetails.vue'),
+                meta: {
+                  title: 'Evaluation Details',
+                  roles: []
+                },
+                icon: 'analytics',
+                visible: false, // Set to false so it does not show up as a raw link in your main sidebar menu
+              },
+            ]
+},
+//#endregion Evaluation Management
   ///SysAdmin
   {
     path: '/sysadm',
     name:'sysadm',
-    component: () => import('pages/sysAdmin/SysAdmin.vue'),
     meta:{
       title:'System Admin',
-      roles:['ADMIN']
+      roles:['admin']
     },
     icon:'settings',
     visible:true,
@@ -42,6 +81,7 @@ const routes = [
         component: () => import('pages/cpes_settings/UserMgt.vue'),
         meta:{
           title:'Users',
+          roles:['admin']
         },
         icon:'manage_accounts',
         visible:true,
@@ -59,13 +99,25 @@ const routes = [
         path: '/evaluation-settings',
         component: () => import('pages/cpes_settings/EvaluationSetting.vue'),
         meta:{
-          title:'Evaluation Settings',
+          title:'Evaluation Templates',
         },
         icon:'settings',
         visible:true,
-      },  
+      },
+      // schedule settings  
+      {
+        path: '/schedule-settings',
+        component: () => import('pages/cpes_settings/ScheduleSetting.vue'),
+        meta:{
+          title:'Schedule Settings',
+        },
+        icon:'calendar_today',
+        visible:true,
+      },
     ],
   },
+
+
 
   // Always leave this as last one,
   // but you can also remove it

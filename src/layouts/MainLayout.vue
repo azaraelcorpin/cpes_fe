@@ -116,7 +116,6 @@
                     expand-separator 
                     :icon="item.icon" 
                     :label="item.meta.title" 
-                    :to="item.path"
                     expand-icon-class="text-white"
                     >
                       <div  v-for="child in item.children" :key="child.path" link>

@@ -121,7 +121,7 @@
             <q-card-section class="q-pa-md bg-white">
               <div class="row justify-between items-center q-mb-md">
                 <div class="text-caption text-weight-bold text-grey-7">CRITERIA / QUESTIONS (EVALUATION ITEMS)</div>
-                <q-btn label="Add Question Item" icon="playlist_add" color="indigo-7" flat dense size="xs" @click="addItem(indIdx)" />
+                <q-btn label="Add Question Item" icon="playlist_add" color="indigo-7" flat dense size="xs" :disable="!canEditIndicator(ind)" @click="addItem(indIdx)" />
               </div>
 
               <div v-if="ind.items.length === 0" class="text-center text-grey-5 q-pa-sm text-caption bg-grey-2 rounded-borders">
@@ -133,9 +133,10 @@
                 <div 
                   v-for="(item, itemIdx) in ind.items" 
                   :key="itemIdx" 
+                  :ref="el => setItemRowRef(indIdx, itemIdx, el)"
                   class="row q-col-gutter-sm items-start q-pa-xs border-item rounded-borders bg-blue-grey-1"
                 >
-                  <q-input v-model="item.name" label="Question Text Description *" dense outlined class="col-12 col-sm-7" :rules="[val => !!val || 'Required']" />
+                  <q-input :ref="el => setItemInputRef(indIdx, itemIdx, el)" v-model="item.name" label="Question Text Description *" dense outlined class="col-12 col-sm-7" :readonly="!canEditIndicator(ind)" :rules="[val => !!val || 'Required']" />
                   
                   <q-input 
                     v-model.number="item.sort_order" 
@@ -144,6 +145,7 @@
                     dense 
                     outlined 
                     class="col-4 col-sm-1" 
+                    :readonly="!canEditIndicator(ind)"
                     :rules="[val => val !== null && val !== '' || '']" 
                   />
                   
@@ -153,11 +155,12 @@
                     false-value="INACTIVE" 
                     color="green" 
                     class="col-6 col-sm-3 justify-center" 
+                    :disable="!canEditIndicator(ind)"
                     label="Active Status" 
                   />
 
                   <div class="col-2 col-sm-1 text-center q-pt-xs">
-                    <q-btn icon="delete_outline" color="red-8" flat round dense size="sm" @click="removeItem(indIdx, itemIdx)" />
+                    <q-btn icon="delete_outline" color="red-8" flat round dense size="sm" :disable="!canEditIndicator(ind)" @click="removeItem(indIdx, itemIdx)" />
                   </div>
                 </div>
               </div>
@@ -238,6 +241,8 @@ export default {
       
       // Reactive layout memory container holding loaded indicators and items
       indicators: [],
+      itemRowRefs: {},
+      itemInputRefs: {},
 
       // Modal Dialog state management framework tracking data
       evalDialog: {
@@ -257,7 +262,48 @@ export default {
     }
   },
 
+    computed: {
+      currentUserRoles () {
+        const storedRoles = localStorage.getItem('userRoles');
+        if (!storedRoles) return [];
+
+        let roles;
+        try {
+          roles = JSON.parse(storedRoles);
+        } catch (err) {
+          roles = storedRoles;
+        }
+
+        if (typeof roles === 'string') {
+          try {
+            roles = JSON.parse(roles);
+          } catch (err) {
+            roles = roles.replace(/^\[|\]$/g, '').split(',');
+          }
+        }
+
+        return (Array.isArray(roles) ? roles : [roles])
+          .filter(Boolean)
+          .map(role => String(role).trim().toUpperCase());
+      }
+    },
+
   methods: {
+    setItemRowRef (indIdx, itemIdx, element) {
+      if (element) this.itemRowRefs[`${indIdx}-${itemIdx}`] = element;
+      else delete this.itemRowRefs[`${indIdx}-${itemIdx}`];
+    },
+
+    setItemInputRef (indIdx, itemIdx, input) {
+      if (input) this.itemInputRefs[`${indIdx}-${itemIdx}`] = input;
+      else delete this.itemInputRefs[`${indIdx}-${itemIdx}`];
+    },
+
+      canEditIndicator (indicator) {
+        const assignedRole = String(indicator?.assigned_role || '').trim().toUpperCase();
+        return Boolean(assignedRole && this.currentUserRoles.includes(assignedRole))|| this.currentUserRoles.includes('admin'.toUpperCase());
+      },
+
     // Select an evaluation and mock loading its children indicators and items
     async selectEvaluation (evalRow) {
       this.selectedEval = evalRow;
@@ -296,10 +342,10 @@ export default {
 
     async getIndicatorsByEvaluationId (evalId) {
       try{
-        let response = await api.getEvaluationProfile(evalId);
+        let response = await api.getEvaluationTemplateProfile(evalId);
      
         if (response && response.data) {
-          this.indicators = response.data;
+          this.indicators = Object.values(response.data);
         } else {
           myDialog.negative(this.$q, 'Error', 'Failed to load indicators. No data returned from API.');
         }
@@ -322,16 +368,22 @@ export default {
       } else {
         this.evalDialog.isEdit = false;
         this.evalDialog.form = { _id: String(Date.now()), name: '', 
-        rating_scale_id: this.ratingScales[0] || null, status: 'INACTIVE',type: 'COURSE_EVAL'};
+        rating_scale_id: null, status: 'INACTIVE',type: 'COURSE_EVAL'};
       }
       this.evalDialog.isOpen = true;
     },
 
    async saveEvaluationBasics () {
-      if (!this.evalDialog.form.name || !this.evalDialog.form.rating_scale_id) {
+      if (!this.evalDialog.form.name || !this.evalDialog.form.rating_scale_id || !this.evalDialog.form.type) {
         myDialog.negative(this.$q, 'Validation Error', 'Please fill in all required fields before saving.');
         return;
       }
+
+      if (this.evalDialog.form.status === 'ACTIVE' && this.hasActiveEvaluationOfType(this.evalDialog.form.type, this.evalDialog.form._id)) {
+        myDialog.negative(this.$q, 'Validation Error', 'Only one ACTIVE evaluation is allowed per evaluation type.');
+        return;
+      }
+
       const confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Are you sure you want to save this evaluation instrument?');
       if (!confirm) return;
 
@@ -339,7 +391,7 @@ export default {
         try {
             let tmpEval = { ...this.evalDialog.form };
             tmpEval.rating_scale_id = parseInt(this.evalDialog.form.rating_scale_id.value);
-          const response = await api.updateEvaluation( tmpEval);
+          const response = await api.updateEvaluationTemplate(tmpEval);
           if (response && response.data) {
             const index = this.evaluations.findIndex(e => e._id === tmpEval._id);
             if (index !== -1) this.evaluations.splice(index, 1, response.data);
@@ -358,7 +410,7 @@ export default {
         try {
             let tmpEval = { ...this.evalDialog.form };
             tmpEval.rating_scale_id = parseInt(this.evalDialog.form.rating_scale_id.value);
-          const response = await api.createEvaluation(tmpEval);
+          const response = await api.createEvaluationTemplate(tmpEval);
           if (response && response.data) {
             this.evaluations.push(response.data);
             myDialog.positive(this.$q, 'Success', 'New evaluation instrument created successfully.');
@@ -374,6 +426,14 @@ export default {
       this.evalDialog.isEdit = false;
       this.evalDialog.form = { _id: null, name: '', rating_scale_id: null, status: 'INACTIVE', type: 'COURSE_EVAL' };
       this.getAllEvaluations();
+    },
+
+    hasActiveEvaluationOfType (type, excludedId = null) {
+      return this.evaluations.some(evaluation => {
+        const sameType = String(evaluation.type || '').toUpperCase() === String(type || '').toUpperCase();
+        const sameRecord = String(evaluation._id) === String(excludedId);
+        return sameType && !sameRecord && evaluation.status === 'ACTIVE';
+      });
     },
 
     // 🔶 LEVEL 1 operations: Indicators array interactions
@@ -408,10 +468,20 @@ export default {
 
     // 🔷 LEVEL 2 operations: Internal item nested mapping arrays
     addItem (indIdx) {
+      const itemIdx = this.indicators[indIdx].items.length;
       this.indicators[indIdx].items.push({
         name: '',
-        sort_order: this.indicators[indIdx].items.length + 1,
+        sort_order: itemIdx + 1,
         status: 'INACTIVE'
+      });
+
+      this.$nextTick(() => {
+        const refKey = `${indIdx}-${itemIdx}`;
+        this.itemRowRefs[refKey]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+        this.itemInputRefs[refKey]?.focus();
       });
     },
 
@@ -428,9 +498,6 @@ export default {
           return;
         }
       
-        let confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Are you sure you want to save the current structure layout?');
-        if (!confirm) return;
-
         //check each indicator and item for required fields
         for (let ind of this.indicators) {
           if (!ind.name || !ind.assigned_role || ind.sort_order === null || ind.sort_order === undefined) {
@@ -461,34 +528,30 @@ export default {
             itemSortOrders.add(item.sort_order);
           }
         }
-
-        let evalForm = this.evalDialog.form;
+        let evalForm = this.selectedEval;
         if (!evalForm.name || !evalForm.rating_scale_id || !evalForm.type) {
           myDialog.negative(this.$q, 'Validation Error', 'Please ensure the evaluation instrument has a name, rating scale, and type before saving the structure.');
           return;
         }
         evalForm.indicators = this.indicators;
 
-        // tobe continue ....
+        let confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Are you sure you want to save the current structure layout?');
+        if (!confirm) return;
 
-
-
+       try{
         
-      try {
-        // Formulate deep structured JSON array payload package
-        const payload = {
-          evaluation_id: this.selectedEval._id,
-          structure: this.indicators
-        };
-        console.log('Dispatch data tracking layout map to Node API endpoint:', payload);
-        
-        // Mock successful save validation logic route executions
-        this.$q.notify({ type: 'positive', message: 'Structural database components written successfully!' });
-      } catch (err) {
-        this.$q.notify({ type: 'negative', message: `Execution error tracking operations: ${err.message}` });
-      } finally {
-        this.$q.loading.hide();
-      }
+        const response = await api.updateEvaluationTemplateProfile(evalForm);
+        console.log('API response for saving evaluation structure:', response);
+        if (response && response.success) {
+          myDialog.positive(this.$q, 'Success', 'Evaluation structure saved successfully.');
+          this.getAllEvaluations();
+        } else {
+          myDialog.negative(this.$q, 'Error', 'Failed to save evaluation structure. No data returned from API.');
+        }
+       } catch (err) {
+         console.error('Error saving evaluation structure:', err);
+         myDialog.negative(this.$q, 'Error', 'Failed to save evaluation structure. Please try again later.'); 
+       }
     },
 
     async getRatingScales () {
@@ -496,7 +559,6 @@ export default {
         const response = await api.getAllRatingScales();
         if (response && response.data) {
             this.ratingScales = response.data;
-            this.evalDialog.form.rating_scale_id = this.ratingScales.length > 0 ? this.ratingScales[0]._id : null;
         }
         else 
             myDialog.negative (this.$q,'Error','Failed to load rating scales. No data returned from API.');
@@ -508,7 +570,7 @@ export default {
 
     async getAllEvaluations () {
       try {
-        const response = await api.getAllEvaluations();
+        const response = await api.getAllEvaluationTemplates();
         if (response && response.data) {
             this.evaluations = response.data;
         }

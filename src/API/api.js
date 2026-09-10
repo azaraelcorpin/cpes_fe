@@ -204,6 +204,101 @@ export default {
       }
     },
 
+    // get all academic terms
+    async getAllAcademicTerms() {
+      var path = '/api/cpes-setting/acad-terms'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, {}, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getAllAcademicTerms Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    // get academic term by id
+    async getAcademicTermById(id) {
+      var path = '/api/cpes-setting/acad-terms/getById'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, { id: id }, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getAcademicTermById Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    // create academic term
+    async createAcademicTerm(term) {
+      var path = '/api/cpes-setting/acad-terms/create'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, term, config);
+        if (response && response.data && (response.data.success || response.status === 201)) {
+          return response.data;
+        } else {
+          console.log('createAcademicTerm Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    // update academic term
+    async updateAcademicTerm(term) {
+      var path = '/api/cpes-setting/acad-terms/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, term, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('updateAcademicTerm Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    // delete academic term
+    async deleteAcademicTerm(id) {
+      var path = '/api/cpes-setting/acad-terms/delete'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, { id: id }, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('deleteAcademicTerm Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
     //update rating scale
     async updateRatingScale(scale) {
       var path = '/api/cpes-setting/rating-scales/update'
@@ -266,8 +361,8 @@ export default {
 
     //#endregion Users and Rating Scales API
 
-
-    async createEvaluation(evaluation) {
+    //#region Evaluation Settings API
+    async createEvaluationTemplate(evaluation) {
       var path = '/api/cpes-setting/evaluations/create'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
@@ -277,7 +372,7 @@ export default {
         if (response && response.data && response.data.success) {
           return response.data;
         } else{
-          console.log('createEvaluation Error');
+          console.log('createEvaluationTemplate Error');
           return {error:response}
         }
       } catch (error) {
@@ -286,8 +381,86 @@ export default {
       }
     },
 
-    async getAllEvaluations() {
+    async getAllEvaluationTemplates() {
       var path = '/api/cpes-setting/evaluations'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {}
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getAllEvaluationTemplates Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async updateEvaluationTemplate(evaluation) {
+      var path = '/api/cpes-setting/evaluations/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = evaluation
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('updateEvaluationTemplate Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async getEvaluationTemplateProfile(evaluationId) {
+      var path = '/api/cpes-setting/indicators/getAllByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { _id: evaluationId }
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getEvaluationTemplateProfile Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async updateEvaluationTemplateProfile(evaluation) {
+      var path = '/api/cpes-setting/indicators/saveAllByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = evaluation
+      try {   
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('updateEvaluationTemplateProfile Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+ //#endregion Evaluation Settings API
+
+    //#region course_eval API
+    async getAllEvaluations() {
+      var path = '/api/course-eval/evaluations'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = {}
@@ -305,17 +478,18 @@ export default {
       }
     },
 
-    async updateEvaluation(evaluation) {
-      var path = '/api/cpes-setting/evaluations/update'
+    // get template of evaluation from 'cpes-setting/evaluations/getActiveByType' 
+    async getEvaluationTemplateByType(type) {
+      var path = '/api/cpes-setting/evaluations/getActiveByType'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = evaluation
+      const body = { type: type }
       try {   
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
         } else{
-          console.log('updateEvaluation Error');
+          console.log('getEvaluationTemplateByType Error');
           return {error:response}
         }
       } catch (error) {
@@ -324,25 +498,7 @@ export default {
       }
     },
 
-    async getEvaluationProfile(evaluationId) {
-      var path = '/api/cpes-setting/indicators/getAllByEvaluationId'
-      var url = `${api_url}${path}`
-      const config = await this.getAuthorization(path);
-      const body = { _id: evaluationId }
-      try {   
-        const response = await axios.post(url, body, config);
-        if (response && response.data && response.data.success) {
-          return response.data;
-        } else{
-          console.log('getEvaluationProfile Error');
-          return {error:response}
-        }
-      } catch (error) {
-        console.log('error',error.message);
-        return { error:error }
-      }
-    },
-
+    //#endregion course_eval API
 
     /**
      * @param {String} pdate
