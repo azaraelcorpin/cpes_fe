@@ -11,7 +11,7 @@ export default {
     if(!route){
       return null;
     }
-    
+
    if(!_data){
     if(!cookies.get('_UID_')){
           cookies.remove('_UID_');
@@ -25,7 +25,7 @@ export default {
             if (result.isConfirmed) {
               return
             }
-          });          
+          });
       return null;
     }
     else{
@@ -37,12 +37,12 @@ export default {
     key = CryptoJS.enc.Utf8.parse(key); // replace with your own secret key
     let iv = CryptoJS.lib.WordArray.random(16); // generate a random 16-byte IV
     const jsonData = JSON.stringify( _data??(cookies.get('_UID_')));
-    const encryptedData = CryptoJS.AES.encrypt(jsonData, key,  {iv} ).toString();    
+    const encryptedData = CryptoJS.AES.encrypt(jsonData, key,  {iv} ).toString();
     return {
       headers:{
         'X-IV': iv.toString(CryptoJS.enc.Base64),
         Authorization:'Bearer '+ encryptedData,
-      } 
+      }
     }
   },
 
@@ -50,7 +50,7 @@ export default {
     let response = error.response
     console.log('res',response.data.message)
     if(response){
-      if(response.data && response.data.statusCode === '401'){    
+      if(response.data && response.data.statusCode === '401'){
         localStorage.removeItem('routeParams');
         Swal.fire({
           title: 'Unauthorized',
@@ -62,7 +62,7 @@ export default {
         })
         setTimeout(function() {
           cookies.remove('_UID_');
-        }, 1000); // 5000 milliseconds = 5 seconds         
+        }, 1000); // 5000 milliseconds = 5 seconds
       }
     }else{
       Swal.fire({
@@ -73,7 +73,7 @@ export default {
         allowOutsideClick:false,
       })
     }
-    
+
   },
 
   //NOTE: getAuthorization() requires a route parameter to be passed in order to validate the session. If the route parameter is not provided, the function will return null and not perform any authorization checks.
@@ -86,7 +86,7 @@ export default {
       const config = await this.getAuthorization(path,SID);
       console.log('config',config)
       const body = {}
-      try { 
+      try {
         const response = await axios.post(url, body, config);
         console.log('response',response)
         if (response && response.data && response.status == 200) {
@@ -99,7 +99,7 @@ export default {
         console.log('error',error.message);
         return { error:error }
       }
-    },  
+    },
 
     //#region Users and Rating Scales API
 
@@ -109,7 +109,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = {}
-      try {   
+      try {
         const response = await axios.post(url, body, config);
 
         if (response && response.data && response.data.success) {
@@ -130,7 +130,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = {role:role}
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -150,7 +150,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = user
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -170,7 +170,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = user
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -190,7 +190,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = {}
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -305,7 +305,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = scale
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -325,7 +325,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = profile
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -345,7 +345,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = profile
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -367,7 +367,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = evaluation
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -386,7 +386,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = {}
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -405,7 +405,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = evaluation
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -424,7 +424,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = { _id: evaluationId }
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -443,7 +443,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = evaluation
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -464,7 +464,7 @@ export default {
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = {}
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -478,13 +478,13 @@ export default {
       }
     },
 
-    // get template of evaluation from 'cpes-setting/evaluations/getActiveByType' 
+    // get template of evaluation from 'cpes-setting/evaluations/getActiveByType'
     async getEvaluationTemplateByType(type) {
       var path = '/api/cpes-setting/evaluations/getActiveByType'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = { type: type }
-      try {   
+      try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
           return response.data;
@@ -500,6 +500,30 @@ export default {
 
     //#endregion course_eval API
 
+
+    //#region sais-ext queries
+    async getDepartmentWithSubjects(acad_year,semCode){
+      var path = '/api/sais-ext/getDepartmentWithSubjects'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        acad_year,
+        semCode
+      }
+      try{
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getDepartmentWithSubjects Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+    //#endregion sais-ext
     /**
      * @param {String} pdate
      * @returns String Date with timezone en-US

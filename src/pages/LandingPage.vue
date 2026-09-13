@@ -20,9 +20,9 @@
           v-model="role"
           :options="[
             { label: 'Admin', value: 'admin' },
-            { label: 'Student', value: 'student' },   
+            { label: 'Student', value: 'student' },
             { label: 'Faculty', value: 'faculty' },
-            { label: 'Chairperson', value: 'chairperson' },                         
+            { label: 'Chairperson', value: 'chairperson' },
             { label: 'Dean', value: 'dean' },
             { label: 'VCAA/CCSID', value: 'admin' }
           ]"
@@ -38,15 +38,15 @@
         </q-btn>
         <q-btn @click="test('admin@msugensan.edu.ph')">
           test ADMIN
-        </q-btn>     
+        </q-btn>
         <q-btn @click="test('office_staff@msugensan.edu.ph')">
           test office Staff
-        </q-btn>             
+        </q-btn>
         <q-btn @click="test('pmt@msugensan.edu.ph')">
           test PMT
-        </q-btn>         
-      </div>      
-    
+        </q-btn>
+      </div>
+
     <GoogleLogin clientId="247346265934-ksi885k87vtrcqh7tvmcgeca9fvqr0fd.apps.googleusercontent.com" :callback="callback"/>
 
   </div>
@@ -84,8 +84,8 @@ export default{
             let SID = {};
             SID.email = userData.email;
             SID.name = userData.name;
-            SID.picture = userData.picture; 
-            SID.role = role.value;  
+            SID.picture = userData.picture;
+            SID.role = role.value;
             console.log(!SID.email.includes('@msugensan.edu.ph'))
             if(!SID.email.includes('@msugensan.edu.ph'))
               {
@@ -93,9 +93,9 @@ export default{
                 loading.value=false;
               }
               else{
-                try {         
-                  let response = await api.generateSessionId(SID);   
-                  console.log('reso',response)              
+                try {
+                  let response = await api.generateSessionId(SID);
+                  console.log('reso',response)
                   if(response.error){
                     if(response.error.response)
                     throw new Error(response.error.response.data.message);
@@ -103,25 +103,25 @@ export default{
                   }
                   if(response.success){
                       let sid=response.data;
-                      
-                      cookies.set('_UID_',JSON.stringify(sid),'1d'); 
+
+                      cookies.set('_UID_',JSON.stringify(sid),'1d');
                       // put in localStorage the userRoles from response ↓↓↓
                       // localStorage.clear();
-                      // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))    
+                      // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))
 
                       localStorage.clear();
-                      localStorage.setItem("userRoles",JSON.stringify(sid.role)) 
+                      localStorage.setItem("userRoles",JSON.stringify(sid.role))
                       if(sid.dept_code)
-                        localStorage.setItem("dept_code",JSON.stringify(sid.dept_code))                 
+                        localStorage.setItem("dept_code",JSON.stringify(sid.dept_code))
                       if(sid.college_code)
                         localStorage.setItem("college_code",JSON.stringify(sid.college_code))
-                      localStorage.setItem("dept_code",JSON.stringify('DCS'))
+                      localStorage.setItem("dept_code",JSON.stringify('ABM'))
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;
                       window.location.reload();
-                } catch (error) { 
-                  console.log('reso',error) 
+                } catch (error) {
+                  console.log('reso',error)
                   loading.value=false;
                   myDialog.negative($q,'Error',error.message)
 
@@ -135,7 +135,7 @@ export default{
             let SID = {};
             SID.userEmail = email;
             SID.name = email.replaceAll('@msugensan.edu.ph','');
-            SID.picture = null;    
+            SID.picture = null;
             console.log(!SID.userEmail.includes('@msugensan.edu.ph'))
             if(!SID.userEmail.includes('@msugensan.edu.ph'))
               {
@@ -143,9 +143,9 @@ export default{
                 loading.value=false;
               }
               else{
-                try {         
-                  let response = await api.generateSessionId(SID);   
-                  console.log('reso',response)              
+                try {
+                  let response = await api.generateSessionId(SID);
+                  console.log('reso',response)
                   if(response.error){
                     if(response.error.response)
                     throw new Error(response.error.response.data.message);
@@ -154,22 +154,22 @@ export default{
                   if(response.status === 'OK'){
                       let sid=response.session.sessionId;
                       SID.sid=sid
-                      cookies.set('_UID_',JSON.stringify(SID),'1d'); 
+                      cookies.set('_UID_',JSON.stringify(SID),'1d');
                       // put in localStorage the userRoles from response ↓↓↓
                       // localStorage.clear();
-                      // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))    
+                      // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))
 
                       localStorage.clear();
                       localStorage.setItem("userRoles",JSON.stringify(response.session.ROLES))
                       let tmp = JSON.stringify(response.session.officesAndRoles);
-                      if(tmp)    
-                        localStorage.setItem("officesAndRoles",tmp)                
+                      if(tmp)
+                        localStorage.setItem("officesAndRoles",tmp)
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;
                       window.location.reload();
-                } catch (error) { 
-                  console.log('reso',error) 
+                } catch (error) {
+                  console.log('reso',error)
                   loading.value=false;
                   myDialog.negative($q,'Error',error.message)
 
@@ -177,7 +177,7 @@ export default{
               }
           }
           const role = ref('admin');
-          
+
     return{
         callback,
         test,

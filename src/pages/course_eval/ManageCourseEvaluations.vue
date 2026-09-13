@@ -9,51 +9,51 @@
         </div>
       </div>
       <q-space />
-      <q-btn 
+      <q-btn
         v-if="canCreateEvaluation"
-        unelevated 
-        color="primary" 
-        icon="add" 
-        label="Create Evaluation" 
-        class="q-px-md" 
-        @click="openCreateModal" 
+        unelevated
+        color="primary"
+        icon="add"
+        label="Create Evaluation"
+        class="q-px-md"
+        @click="openCreateModal"
       />
     </div>
 
     <!-- Data Table Container Filter Controls Wrapper -->
     <q-card flat bordered class="shadow-1 overflow-hidden" style="border-radius: 8px;">
       <q-card-section class="row q-col-gutter-md q-py-md bg-white border-bottom">
-        <q-input 
-          v-model="filter" 
-          class="col-12 col-md-4" 
-          outlined 
-          dense 
-          clearable 
+        <q-input
+          v-model="filter"
+          class="col-12 col-md-4"
+          outlined
+          dense
+          clearable
           label="Search evaluations..."
         >
           <template #prepend>
             <q-icon name="search" size="xs" color="grey-6" />
           </template>
         </q-input>
-        
-        <q-select 
-          v-model="statusFilter" 
-          class="col-12 col-md-3" 
-          outlined 
-          dense 
+
+        <q-select
+          v-model="statusFilter"
+          class="col-12 col-md-3"
+          outlined
+          dense
           clearable
-          :options="statusOptions" 
-          label="Status" 
+          :options="statusOptions"
+          label="Status"
         />
       </q-card-section>
 
       <!-- Course Evaluation Matrix Summary Grid -->
-      <q-table 
-        :rows="filteredEvaluations" 
-        :columns="columns" 
-        row-key="_id" 
+      <q-table
+        :rows="filteredEvaluations"
+        :columns="columns"
+        row-key="_id"
         :loading="loading"
-        :pagination="pagination" 
+        :pagination="pagination"
         flat
         square
         class="bg-white"
@@ -61,11 +61,11 @@
         <!-- Table Column Header Slots Structure -->
         <template #header="props">
           <q-tr :props="props" class="bg-grey-2 text-grey-8">
-            <q-th 
-              v-for="col in props.cols" 
-              :key="col.name" 
-              :props="props" 
-              class="text-subtitle2" 
+            <q-th
+              v-for="col in props.cols"
+              :key="col.name"
+              :props="props"
+              class="text-subtitle2"
               style="font-size: 0.8rem; font-weight: 600;"
             >
               {{ col.label }}
@@ -83,8 +83,8 @@
               {{ props.row.sem }}
             </q-td>
             <q-td key="course_code" :props="props">
-              <a 
-                class="text-primary text-weight-bold cursor-pointer text-underline" 
+              <a
+                class="text-primary text-weight-bold cursor-pointer text-underline"
                 @click="navigateToDetails(props.row._id)"
               >
                 {{ props.row.course_code }}
@@ -97,33 +97,33 @@
               {{ props.row.dept_code }}
             </q-td>
             <q-td key="status" :props="props">
-              <q-badge 
-                rounded 
-                :color="getStatusColor(props.row.status)" 
+              <q-badge
+                rounded
+                :color="getStatusColor(props.row.status)"
                 class="q-px-sm q-py-xs text-weight-bold"
               >
                 {{ props.row.status }}
               </q-badge>
             </q-td>
             <q-td key="actions" :props="props">
-              <q-btn 
-                flat 
-                round 
-                dense 
-                icon="visibility" 
-                color="primary" 
-                class="q-mr-xs" 
+              <q-btn
+                flat
+                round
+                dense
+                icon="visibility"
+                color="primary"
+                class="q-mr-xs"
                 @click="navigateToDetails(props.row._id)"
               >
                 <q-tooltip>Open Detail Dashboard</q-tooltip>
               </q-btn>
-              <q-btn 
-                flat 
-                round 
-                dense 
-                icon="edit" 
-                color="secondary" 
-                @click="openEditModal(props.row)" 
+              <q-btn
+                flat
+                round
+                dense
+                icon="edit"
+                color="secondary"
+                @click="openEditModal(props.row)"
               >
                 <q-tooltip>Modify Parameters</q-tooltip>
               </q-btn>
@@ -147,7 +147,7 @@
             <div class="text-caption">Rating Scale: {{ courseEvaluationTemplate.rating_scale?.name || 'Unnamed rating scale' }}</div>
           </q-banner>
         </q-card-section>
-        
+
         <q-form @submit="saveEvaluation">
           <q-card-section class="row q-col-gutter-md">
             <q-input
@@ -173,14 +173,14 @@
               :rules="[requiredValidation]"
               @update:model-value="applyDepartment"
             />
-            <q-input 
+            <q-input
               v-model="form.course_code"
               v-if="editing"
-              class="col-12 col-md-6" 
-              outlined 
-              dense 
-              label="Course Code" 
-              :rules="[requiredValidation]" 
+              class="col-12 col-md-6"
+              outlined
+              dense
+              label="Course Code"
+              :rules="[requiredValidation]"
             />
             <q-select
               v-else
@@ -196,39 +196,39 @@
               :rules="[requiredValidation]"
               @update:model-value="applyCourse"
             />
-            <q-input 
-              v-model="form.course_title" 
-              class="col-12 col-md-6" 
-              outlined 
-              dense 
-              label="Course Title" 
-              :rules="[requiredValidation]" 
+            <q-input
+              v-model="form.course_title"
+              class="col-12 col-md-6"
+              outlined
+              dense
+              label="Course Title"
+              readonly
             />
-            <q-select 
-              v-model="form.status" 
-              class="col-12" 
-              outlined 
-              dense 
-              :options="statusOptions" 
-              label="Initial Deployment State" 
-              :rules="[requiredValidation]" 
+            <q-select
+              v-model="form.status"
+              class="col-12"
+              outlined
+              dense
+              :options="statusOptions"
+              label="Initial Deployment State"
+              :rules="[requiredValidation]"
             />
           </q-card-section>
-          
+
           <q-card-actions align="right" class="q-pa-md bg-grey-1">
-            <q-btn 
-              flat 
-              label="Cancel" 
-              color="grey-7" 
-              v-close-popup 
+            <q-btn
+              flat
+              label="Cancel"
+              color="grey-7"
+              v-close-popup
             />
-            <q-btn 
-              unelevated 
-              color="primary" 
-              label="Commit Record" 
-              type="submit" 
-              :loading="saving" 
-              class="q-px-md" 
+            <q-btn
+              unelevated
+              color="primary"
+              label="Commit Record"
+              type="submit"
+              :loading="saving"
+              class="q-px-md"
             />
           </q-card-actions>
         </q-form>
@@ -238,10 +238,11 @@
 </template>
 <script>
 import api from 'src/API/api.js'
+import { toRaw } from 'vue';
 
 export default {
   name: 'EvaluationManagementPage',
-  
+
   data () {
     return {
       evaluations: [],
@@ -253,8 +254,8 @@ export default {
       filter: '',
       statusFilter: null,
       statusOptions: [
-        'DRAFT', 
-        'ACTIVE', 
+        'DRAFT',
+        'ACTIVE',
         'CLOSED'
       ],
       departmentOptions: [
@@ -291,10 +292,9 @@ export default {
 
     courseOptions () {
       return this.courses
-        .filter(course => !this.form.dept_code || course.department === this.form.dept_code)
         .map(course => ({
-        label: `${course.code} - ${course.title}`,
-        value: course.code
+        label: `${course.subjectCode} - ${course.subjectName}`,
+        value: course.subjectCode
         }));
     },
 
@@ -328,16 +328,16 @@ export default {
 
     filteredEvaluations () {
       const searchTxt = this.filter.toLowerCase().trim();
-      
+
       return this.evaluations.filter((row) => {
-        const matchesSearch = !searchTxt || 
-          row.course_code.toLowerCase().includes(searchTxt) || 
+        const matchesSearch = !searchTxt ||
+          row.course_code.toLowerCase().includes(searchTxt) ||
           row.course_title.toLowerCase().includes(searchTxt) ||
           row.dept_code.toLowerCase().includes(searchTxt);
-          
-        const matchesStatus = !this.statusFilter || 
+
+        const matchesStatus = !this.statusFilter ||
           row.status === this.statusFilter;
-          
+
         return matchesSearch && matchesStatus;
       });
     }
@@ -355,7 +355,7 @@ export default {
         sem: 1,
         course_code: '',
         course_title: '',
-        dept_code: JSON.parse(String(localStorage.getItem('dept_code') || '')).trim(),
+        dept_code: JSON.parse(localStorage.getItem('dept_code')),
         status: 'DRAFT',
         rating_scale_id: null
       };
@@ -363,7 +363,7 @@ export default {
 
     loadSampleManagementData () {
       this.loading = true;
-      
+
       this.evaluations = [
         {
           _id: "eval_01",
@@ -396,7 +396,7 @@ export default {
           rating_scale_id: "scale_xyz"
         }
       ];
-      
+
       this.loading = false;
     },
 
@@ -418,14 +418,18 @@ export default {
     },
 
     applyDepartment () {
+      // console.log('form DC', this.form.dept_code)
+      let dpt =toRaw( this.departmentOptions.find(dept => dept.value === this.form.dept_code))
+      this.courses = dpt.subjects;
+
       this.form.course_code = '';
       this.form.course_title = '';
     },
 
     applyCourse (courseCode) {
-      const course = this.courses.find(item => item.code === courseCode);
+      const course = this.courses.find(item => item.subjectCode === courseCode);
       if (course) {
-        this.form.course_title = course.title;
+        this.form.course_title = course.subjectName;
         if (!this.hasStoredDepartment && !this.form.dept_code) this.form.dept_code = course.department;
       }
     },
@@ -436,8 +440,17 @@ export default {
         return;
       }
 
+
       try {
         this.courseEvaluationTemplate = await this.getCourseEvaluationTemplate();
+        let acad_year = this.courseEvaluationTemplate.acad_year
+        let semCode = '';
+        switch (this.courseEvaluationTemplate.sem){
+          case '1st Semester': semCode = '21'; break;
+          case '2nd Semester': semCode = '22'; break;
+          case 'summer': semCode = '23'; break;
+        }
+        await this.getDepartmentWithSubjects(acad_year,semCode);
       } catch (error) {
         this.courseEvaluationTemplate = null;
         this.$q.notify({
@@ -459,9 +472,9 @@ export default {
     },
 
     navigateToDetails (id) {
-      this.$router.push({ 
-        name: 'evaluationDetails', 
-        params: { id: id } 
+      this.$router.push({
+        name: 'evaluationDetails',
+        params: { id: id }
       });
     },
 
@@ -476,6 +489,27 @@ export default {
       return templateData;
     },
 
+    async getDepartmentWithSubjects (acad_year,semCode) {
+      const response = await api.getDepartmentWithSubjects(acad_year,semCode);
+      if (!response || response.error || !response.success) {
+        throw new Error('No active Department is available');
+      }
+
+      const tmpDpt = Array.isArray(response.data) ? response.data[0] : response.data;
+      if (!tmpDpt) throw new Error('No active Department is available');
+
+      // Transform the array
+      this.departmentOptions = response.data.map(item => ({
+        label: item.department_name + ' ['+item.department_code+']',
+        value: item.department_code,
+        subjects: item.subjects
+      }));
+
+      if(this.hasStoredDepartment){
+      this.applyDepartment()
+      }
+    },
+
     async saveEvaluation () {
       if (!this.editing && !this.canCreateEvaluation) {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or admin can create an evaluation.' });
@@ -488,12 +522,12 @@ export default {
       }
 
       this.saving = true;
-      
+
       if (this.editing === true) {
         const matchIndex = this.evaluations.findIndex((item) => {
           return item._id === this.form._id;
         });
-        
+
         if (matchIndex !== -1) {
           this.evaluations.splice(matchIndex, 1, { ...this.form });
         }
@@ -522,10 +556,10 @@ export default {
           return;
         }
       }
-      
+
       this.saving = false;
       this.dialog = false;
-      
+
       this.$q.notify({
         type: 'positive',
         message: 'Evaluation added to the sample list.'
