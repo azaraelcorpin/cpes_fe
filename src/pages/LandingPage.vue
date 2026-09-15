@@ -1,55 +1,90 @@
 <template>
-  <!-- <div style="color:white;display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; position: relative;" class="bg"> -->
-    <div class="fullscreen bg text-white text-center q-pa-md flex flex-center">
-      <q-inner-loading :showing="loading"
-        label="Please wait..."
-        label-class="text-black"
-        label-style="font-size: 1.1em"
-        color="black"
-       style="z-index: 1000;" >
-      </q-inner-loading>
-    <div style=" align-items: center; justify-content: center;position: absolute; top: 20px; font-size: 48px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: bold; color: black;">
-      Mindanao State University
-    </div>
-      <div  style="position: absolute;margin-bottom: 30%;  font-size: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-weight: bold; color: black;">
-      Course Program Evaluation System
+  <main :class="{ 'login-panel-hidden': !showLoginPanel }" class="login-page">
+    <q-inner-loading :showing="loading" color="white" class="login-loading">
+      <q-spinner-dots size="50px" color="white" />
+      <div class="text-white q-mt-md">Signing you in...</div>
+    </q-inner-loading>
+
+    <section class="login-intro" @click="showLoginPanel = true">
+      <div class="intro-shade"></div>
+      <q-btn
+        flat
+        round
+        dense
+        class="panel-toggle"
+        :icon="showLoginPanel ? 'arrow_forward' : 'arrow_back'"
+        :aria-label="showLoginPanel ? 'Hide sign-in panel' : 'Show sign-in panel'"
+        @click.stop="showLoginPanel = !showLoginPanel"
+      />
+      <div class="intro-content">
+        <div class="brand-lockup">
+          <img class="brand-mark" src="~assets/MSU_Gensan_logo.png" alt="MSU GenSan seal" />
+          <div>
+            <div class="brand-kicker">Mindanao State University</div>
+            <div class="brand-campus">General Santos</div>
+          </div>
+        </div>
+        <div class="intro-copy">
+          <div class="eyebrow">Academic quality, made visible</div>
+          <h1>Course &amp; Program<br />Evaluation System</h1>
+          <p>One place for thoughtful feedback, clear insights, and better learning experiences.</p>
+        </div>
+        <div class="intro-footer">MSU-Gensan &nbsp;·&nbsp; ICTO</div>
       </div>
-      <!-- combobox for role selection -->
-       <div style="position: absolute;margin-bottom: 10%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    </section>
+
+    <section :class="{ 'login-panel-hidden': !showLoginPanel }" class="login-panel">
+      <div class="login-card">
+        <div class="mobile-brand">MSU <span>GENSAN</span></div>
+        <div class="panel-heading">
+          <div class="panel-overline">Welcome back</div>
+          <h2>Sign in to CPES</h2>
+          <p>Use your official MSU account to continue.</p>
+        </div>
+
+        <div class="field-label">Your role</div>
         <q-select
           v-model="role"
           :options="[
-            { label: 'Admin', value: 'admin' },
+            { label: 'Administrator', value: 'admin' },
             { label: 'Student', value: 'student' },
             { label: 'Faculty', value: 'faculty' },
             { label: 'Chairperson', value: 'chairperson' },
             { label: 'Dean', value: 'dean' },
-            { label: 'VCAA/CCSID', value: 'admin' }
+            { label: 'VCAA / CCSID', value: 'admin' }
           ]"
-          label="Select Role"
           outlined
-          dense
-          style="width: 200px;"
-        />
-      </div>
-      <div  style="position: absolute;margin-bottom: -30%;" >
-        <q-btn @click="test('hr@msugensan.edu.ph')">
-          test HR
-        </q-btn>
-        <q-btn @click="test('admin@msugensan.edu.ph')">
-          test ADMIN
-        </q-btn>
-        <q-btn @click="test('office_staff@msugensan.edu.ph')">
-          test office Staff
-        </q-btn>
-        <q-btn @click="test('pmt@msugensan.edu.ph')">
-          test PMT
-        </q-btn>
-      </div>
+          emit-value
+          map-options
+          behavior="menu"
+          popup-content-class="role-menu"
+          class="role-select"
+          aria-label="Select your role"
+        >
+          <template #prepend><q-icon name="badge" /></template>
+        </q-select>
 
-    <GoogleLogin clientId="247346265934-ksi885k87vtrcqh7tvmcgeca9fvqr0fd.apps.googleusercontent.com" :callback="callback"/>
+        <div class="signin-divider"><span>secure access</span></div>
+        <div class="google-login-wrap">
+          <GoogleLogin
+            clientId="247346265934-ksi885k87vtrcqh7tvmcgeca9fvqr0fd.apps.googleusercontent.com"
+            :callback="callback"
+          />
+        </div>
+        <p class="account-note"><q-icon name="lock" size="14px" /> Only @msugensan.edu.ph accounts are accepted</p>
 
-  </div>
+        <q-expansion-item label="Developer access" icon="terminal" dense class="developer-access">
+          <div class="developer-grid">
+            <q-btn outline dense label="HR" @click="test('hr@msugensan.edu.ph')" />
+            <q-btn outline dense label="Admin" @click="test('admin@msugensan.edu.ph')" />
+            <q-btn outline dense label="Office staff" @click="test('office_staff@msugensan.edu.ph')" />
+            <q-btn outline dense label="PMT" @click="test('pmt@msugensan.edu.ph')" />
+          </div>
+        </q-expansion-item>
+      </div>
+      <div class="panel-footer">CPES <span>v2026</span></div>
+    </section>
+  </main>
 </template>
 
 
@@ -72,6 +107,7 @@ export default{
   },
   setup(){
           const loading = ref(false);
+      const showLoginPanel = ref(true);
           const $q = useQuasar()
           const { cookies } = useCookies();
           const router = useRouter();
@@ -184,6 +220,7 @@ export default{
         router,
         cookies ,
         loading,
+        showLoginPanel,
         role,
     }
   },
@@ -196,14 +233,78 @@ export default{
 
 </script>
 
-<style>
-  .bg {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    background: url( '../assets/bgt.png') no-repeat center center;
-    background-size: cover;
+<style scoped>
+  .login-page {
+    --ink: #202124;
+    --maroon: #650b0e;
+    --gold: #d9a441;
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(380px, 0.85fr);
+    background: #f7f5f2;
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    overflow: hidden;
+    transition: grid-template-columns .85s cubic-bezier(.34, 1.56, .64, 1);
+  }
+  .login-page.login-panel-hidden { grid-template-columns: minmax(0, 1fr) 0; }
+  .login-intro { position: relative; min-height: 100vh; background: url('../assets/bgt.png') center / cover no-repeat; overflow: hidden; cursor: default; }
+  .login-page.login-panel-hidden .login-intro { cursor: pointer; }
+  .intro-shade { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(42, 4, 5, .86) 0%, rgba(92, 7, 10, .48) 46%, rgba(27, 25, 25, .12) 100%); }
+  .panel-toggle { position: absolute; top: 24px; right: 24px; z-index: 3; color: white; background: rgba(42, 4, 5, .34); border: 1px solid rgba(255, 255, 255, .34); backdrop-filter: blur(8px); }
+  .panel-toggle:hover { background: rgba(42, 4, 5, .62); }
+  .intro-content { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between; padding: clamp(32px, 6vw, 84px); color: white; }
+  .brand-lockup { display: flex; align-items: center; gap: 16px; }
+  .brand-mark { display: block; width: 72px; height: 72px; flex: 0 0 72px; object-fit: contain; filter: drop-shadow(0 8px 12px rgba(0, 0, 0, .2)); }
+  .brand-kicker { font-size: clamp(18px, 2vw, 25px); font-weight: bold; letter-spacing: .01em; }
+  .brand-campus { margin-top: 3px; color: #f2cf80; font: 600 11px/1.2 Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+  .intro-copy { max-width: 640px; margin-top: 12vh; }
+  .eyebrow, .panel-overline { color: var(--gold); font: 700 11px/1.2 Arial, sans-serif; letter-spacing: .2em; text-transform: uppercase; }
+  h1 { margin: 18px 0; font-size: clamp(42px, 5.5vw, 78px); line-height: .98; letter-spacing: -.03em; }
+  .intro-copy p { max-width: 410px; margin: 0; color: rgba(255, 255, 255, .78); font: 16px/1.6 Arial, sans-serif; }
+  .intro-footer { color: rgba(255, 255, 255, .65); font: 11px Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+  .login-panel { display: flex; flex-direction: column; justify-content: center; padding: 7vh clamp(28px, 7vw, 100px); background: #f7f5f2; overflow: hidden; opacity: 1; transform: translateX(0) scale(1); filter: blur(0); visibility: visible; will-change: opacity, transform, filter; transition: opacity .42s ease, transform .85s cubic-bezier(.34, 1.56, .64, 1), filter .5s ease, visibility 0s linear 0s; }
+  .login-panel.login-panel-hidden { opacity: 0; transform: translateX(100%) scale(.98); filter: blur(3px); visibility: hidden; pointer-events: none; transition: opacity .35s ease, transform .85s cubic-bezier(.34, 1.56, .64, 1), filter .5s ease, visibility 0s linear .85s; }
+  .login-card { width: 100%; max-width: 430px; margin: auto; }
+  .mobile-brand { display: none; color: var(--maroon); font: 700 14px Arial, sans-serif; letter-spacing: .16em; }
+  .mobile-brand span { color: #8f8b83; }
+  .panel-heading { margin-bottom: 38px; }
+  h2 { margin: 10px 0 8px; color: var(--ink); font-size: clamp(32px, 4vw, 46px); line-height: 1; letter-spacing: -.03em; }
+  .panel-heading p { margin: 0; color: #77736d; font: 14px/1.5 Arial, sans-serif; }
+  .field-label { margin-bottom: 8px; color: #55514b; font: 700 12px Arial, sans-serif; letter-spacing: .04em; }
+  .role-select :deep(.q-field__control) { height: 54px; border-radius: 3px; background: rgba(255, 255, 255, .58); }
+  .role-select :deep(.q-field__native), .role-select :deep(.q-field__marginal) { color: var(--ink); }
+  .role-select :deep(.q-field__control:before) { border-color: #d6d0c8; }
+  .role-select :deep(.q-field__control:hover:before) { border-color: var(--maroon); }
+  .role-select :deep(.q-icon) { color: var(--maroon); }
+  .signin-divider { display: flex; align-items: center; gap: 12px; margin: 30px 0 22px; color: #aaa49b; font: 10px Arial, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+  .signin-divider::before, .signin-divider::after { content: ''; height: 1px; flex: 1; background: #ded9d1; }
+  .google-login-wrap { display: flex; justify-content: center; min-height: 44px; }
+  .account-note { display: flex; align-items: center; justify-content: center; gap: 5px; margin: 16px 0 30px; color: #918b83; font: 11px Arial, sans-serif; }
+  .developer-access { border-top: 1px solid #e2ddd6; color: #7d7770; font: 12px Arial, sans-serif; }
+  .developer-access :deep(.q-item) { padding: 14px 0; }
+  .developer-access :deep(.q-item__section--avatar) { min-width: 28px; color: var(--maroon); }
+  .developer-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding: 0 0 14px 28px; }
+  .developer-grid .q-btn { color: var(--maroon); border-color: #cfc8bf; font-size: 11px; }
+  .panel-footer { margin-top: auto; color: #a19b92; text-align: center; font: 10px Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+  .panel-footer span { color: #c1bbb2; }
+  .login-loading { background: rgba(34, 10, 11, .8); }
+  @media (max-width: 760px) {
+    .login-page { display: block; overflow-y: auto; }
+    .login-page.login-panel-hidden { grid-template-columns: 1fr; }
+    .login-intro { min-height: 215px; }
+    .intro-content { min-height: 215px; padding: 24px 26px; }
+    .brand-lockup { gap: 10px; }
+    .brand-mark { width: 48px; height: 48px; flex-basis: 48px; }
+    .brand-kicker { font-size: 16px; }
+    .brand-campus { font-size: 9px; }
+    .intro-copy { margin-top: 0; }
+    .intro-copy .eyebrow, .intro-copy p, .intro-footer { display: none; }
+    h1 { margin: 0; font-size: 32px; }
+    .login-panel { min-height: calc(100vh - 215px); padding: 36px 26px 24px; max-height: 1000px; transition: opacity .35s ease, transform .7s cubic-bezier(.34, 1.56, .64, 1), max-height .7s ease; }
+    .login-panel.login-panel-hidden { max-height: 0; min-height: 0; padding-top: 0; padding-bottom: 0; }
+    .mobile-brand { display: block; margin-bottom: 38px; }
+    .panel-heading { margin-bottom: 30px; }
+    .panel-footer { margin-top: 30px; }
   }
 </style>

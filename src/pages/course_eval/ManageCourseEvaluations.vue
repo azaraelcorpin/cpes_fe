@@ -80,7 +80,7 @@
               {{ props.row.acad_year }}
             </q-td>
             <q-td key="sem" :props="props">
-              {{ props.row.sem }}
+              {{ formatSemester(props.row.sem) }}
             </q-td>
             <q-td key="course_code" :props="props">
               <a
@@ -180,6 +180,7 @@
               outlined
               dense
               label="Course Code"
+              readonly
               :rules="[requiredValidation]"
             />
             <q-select
@@ -210,6 +211,7 @@
               outlined
               dense
               :options="statusOptions"
+              :disable="!editing"
               label="Initial Deployment State"
               :rules="[requiredValidation]"
             />
@@ -239,6 +241,8 @@
 <script>
 import api from 'src/API/api.js'
 import { toRaw } from 'vue';
+import sampleCourses from './sampleCourses.json'
+import myDialog from 'src/plugins/myDialog';
 
 export default {
   name: 'EvaluationManagementPage',
@@ -291,10 +295,15 @@ export default {
     },
 
     courseOptions () {
+      const existingCourseCodes = new Set(
+        this.evaluations.map(evaluation => evaluation.course_code)
+      );
+
       return this.courses
+        .filter(course => !existingCourseCodes.has(course.subjectCode))
         .map(course => ({
-        label: `${course.subjectCode} - ${course.subjectName}`,
-        value: course.subjectCode
+          label: `${course.subjectCode} - ${course.subjectName}`,
+          value: course.subjectCode
         }));
     },
 
@@ -340,7 +349,8 @@ export default {
 
         return matchesSearch && matchesStatus;
       });
-    }
+    },
+
   },
 
   mounted () {
@@ -348,6 +358,15 @@ export default {
   },
 
   methods: {
+    formatSemester (value) {
+      switch (value) {
+        case 21: return '1st Semester';
+        case 22: return '2nd Semester';
+        case 23: return 'Summer';
+      }
+      return '';
+    },
+
     getInitialFormState () {
       return {
         _id: null,
@@ -364,38 +383,7 @@ export default {
     loadSampleManagementData () {
       this.loading = true;
 
-      this.evaluations = [
-        {
-          _id: "eval_01",
-          acad_year: "2026-2027",
-          sem: "1st Semester",
-          course_code: "CS-312",
-          course_title: "Database Management Systems II",
-          dept_code: "DCS",
-          status: "ACTIVE",
-          rating_scale_id: "scale_abc"
-        },
-        {
-          _id: "eval_02",
-          acad_year: "2026-2027",
-          sem: "1st Semester",
-          course_code: "CS-315",
-          course_title: "Web Systems and Technologies",
-          dept_code: "DCS",
-          status: "DRAFT",
-          rating_scale_id: "scale_abc"
-        },
-        {
-          _id: "eval_03",
-          acad_year: "2025-2026",
-          sem: "2nd Semester",
-          course_code: "IT-221",
-          course_title: "Data Structures and Algorithms",
-          dept_code: "DIT",
-          status: "CLOSED",
-          rating_scale_id: "scale_xyz"
-        }
-      ];
+      this.getEvaluations()
 
       this.loading = false;
     },
@@ -417,10 +405,16 @@ export default {
       return true;
     },
 
-    applyDepartment () {
+    async applyDepartment () {
       // console.log('form DC', this.form.dept_code)
-      let dpt =toRaw( this.departmentOptions.find(dept => dept.value === this.form.dept_code))
-      this.courses = dpt.subjects;
+
+      //use this when using production
+      // let dpt =toRaw( this.departmentOptions.find(dept => dept.value === this.form.dept_code))
+      // this.courses = dpt.subjects;
+      
+      //for development only
+      this.courses = toRaw(sampleCourses);
+
 
       this.form.course_code = '';
       this.form.course_title = '';
@@ -439,7 +433,7 @@ export default {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or admin can create an evaluation.' });
         return;
       }
-
+      
 
       try {
         this.courseEvaluationTemplate = await this.getCourseEvaluationTemplate();
@@ -450,7 +444,24 @@ export default {
           case '2nd Semester': semCode = '22'; break;
           case 'summer': semCode = '23'; break;
         }
-        await this.getDepartmentWithSubjects(acad_year,semCode);
+        // await this.getDepartmentWithSubjects(acad_year,semCode);
+        if(this.hasStoredDepartment){
+          this.applyDepartment()
+        }
+
+             // this.form = this.getInitialFormState();
+              this.form = {
+                _id: null,
+                acad_year: acad_year,
+                sem: semCode,
+                course_code: '',
+                course_title: '',
+                dept_code: JSON.parse(localStorage.getItem('dept_code')),
+                status: 'DRAFT',
+                rating_scale_id: this.courseEvaluationTemplate.rating_scale_id,
+              };
+              this.editing = false;
+              this.dialog = true;
       } catch (error) {
         this.courseEvaluationTemplate = null;
         this.$q.notify({
@@ -459,10 +470,6 @@ export default {
         });
         return;
       }
-
-      this.form = this.getInitialFormState();
-      this.editing = false;
-      this.dialog = true;
     },
 
     openEditModal (row) {
@@ -533,23 +540,17 @@ export default {
         }
       } else {
         try {
-          const template = this.courseEvaluationTemplate || await this.getCourseEvaluationTemplate();
+          const template = this.courseEvaluationTemplate;
           const evaluationPayload = {
             ...this.form,
-            acad_year: template.acad_year,
-            sem: template.sem,
-            rating_scale_id: this.form.rating_scale_id || template.rating_scale_id
+            indicators: template.indicators?? []
           };
-
-          if (!evaluationPayload.acad_year || evaluationPayload.sem === undefined || evaluationPayload.sem === null) {
-            throw new Error('The active COURSE_EVAL template has no academic year or semester.');
-          }
-
-          if (template._id !== undefined) evaluationPayload.evaluation_template_id = template._id;
-          else if (template.id !== undefined) evaluationPayload.evaluation_template_id = template.id;
-
-          this.evaluations.unshift(evaluationPayload);
-          console.log('New evaluation added:', evaluationPayload);
+          console.log('payload', evaluationPayload)
+          const confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Please confirm to save Evaluation');
+		      if (!confirm) return;
+          const response = await api.createEvaluation(evaluationPayload)
+          if(!response.success)
+            throw new Error(response.error.response.data.message || 'Failed to create evaluation');
         } catch (error) {
           this.saving = false;
           this.$q.notify({ type: 'negative', message: error.message || 'Unable to create evaluation. Please try again.' });
@@ -557,6 +558,7 @@ export default {
         }
       }
 
+      this.getEvaluations();
       this.saving = false;
       this.dialog = false;
 
@@ -564,7 +566,34 @@ export default {
         type: 'positive',
         message: 'Evaluation added to the sample list.'
       });
-    }
+    },
+
+    async getEvaluations () {
+      this.loading = true;
+
+      try {
+        const response = await api.getEvaluations();
+
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluations.');
+        }
+
+        const records = Array.isArray(response.data) ? response.data : [];
+        this.evaluations = records.map((item) => ({
+          ...item,
+          status: item.status || 'DRAFT'
+        }));
+      } catch (error) {
+        this.evaluations = [];
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load evaluations.'
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+    
   }
 };
 

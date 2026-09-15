@@ -1,11 +1,8 @@
 <template>
-  <!-- <router-view /> -->
-  <div>
-  <main-layout>
+  <router-view v-if="$route.name === 'signIn'" />
+  <main-layout v-else>
       <router-view />
-   </main-layout>
-   
-   </div>
+  </main-layout>
 </template>
 
 <script>
