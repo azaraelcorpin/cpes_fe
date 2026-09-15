@@ -3,7 +3,7 @@
     
     <!-- 1. Keep Breadcrumbs Safe (Use fallback text if loading) -->
     <q-breadcrumbs class="q-mb-md text-caption">
-      <q-breadcrumbs-el label="Evaluations Management" icon="assignment" to="/manage-evaluations" />
+      <q-breadcrumbs-el label="Evaluations Management" icon="assignment" to="/course-evaluations" />
       <q-breadcrumbs-el :label="evaluation ? evaluation.course_code : 'Loading Workspace...'" icon="analytics" />
     </q-breadcrumbs>
 
@@ -18,7 +18,7 @@
               {{ evaluation.course_code }}: {{ evaluation.course_title }}
             </div>
             <div class="text-caption text-grey-6 font-mono q-mt-xs">
-              AY: {{ evaluation.acad_year }} | Semester: 0{{ evaluation.sem }} | Dept: {{ evaluation.dept_code }}
+              AY: {{ evaluation.acad_year }} | Semester: {{ formatSemester(evaluation.sem) }} | Dept: {{ evaluation.dept_code }}
             </div>
             
             <div v-if="evaluation.status === 'ACTIVE'" class="text-caption text-negative text-weight-bold q-mt-xs row items-center">
@@ -42,36 +42,83 @@
       <q-tab-panels v-model="activeTab" animated class="bg-transparent">
         <q-tab-panel name="details" class="q-pa-none">
           <q-card flat bordered class="bg-white">
-            <q-card-section class="row items-center justify-between">
+            <q-card-section class="row items-center justify-between details-heading">
               <div>
                 <div class="text-subtitle1 text-weight-bold">Indicators and Evaluation Items</div>
                 <div class="text-caption text-grey-6">Manage the questions and assigned authority for this evaluation.</div>
               </div>
+              <div class="details-summary">
+                <div class="details-summary-stat">
+                  <span class="text-h6 text-weight-bold text-primary">{{ evaluation.indicators?.length || 0 }}</span>
+                  <span class="text-caption text-grey-6">Indicators</span>
+                </div>
+                <div class="details-summary-stat">
+                  <span class="text-h6 text-weight-bold text-primary">{{ totalEvaluationItems }}</span>
+                  <span class="text-caption text-grey-6">Items</span>
+                </div>
+              </div>
             </q-card-section>
             <q-separator />
-            <q-card-section v-if="evaluation.indicators && evaluation.indicators.length" class="q-gutter-md">
-              <q-card v-for="indicator in evaluation.indicators" :key="indicator._id" flat bordered>
-                <q-card-section class="row items-center q-col-gutter-md bg-grey-1">
-                  <div class="col-12 col-md-7">
-                    <div class="text-subtitle2 text-weight-bold">{{ indicator.sort_order }}. {{ indicator.name }}</div>
-                    <div class="text-caption text-grey-7">Authority: {{ indicator.assigned_role || 'Unassigned' }}</div>
+            <q-card-section v-if="evaluation.indicators && evaluation.indicators.length" class="indicator-list">
+              <q-card
+                v-for="(indicator, indicatorIndex) in evaluation.indicators"
+                :key="indicator._id"
+                flat
+                bordered
+                class="indicator-card"
+              >
+                <q-card-section class="indicator-header">
+                  <q-avatar color="primary" text-color="white" size="38px" class="indicator-number">
+                    {{ indicator.sort_order || indicatorIndex + 1 }}
+                  </q-avatar>
+                  <div class="col q-ml-md">
+                    <div class="text-subtitle2 text-weight-bold text-grey-9">{{ indicator.name }}</div>
+                    <div class="row items-center q-gutter-sm q-mt-xs">
+                      <q-badge color="blue-grey-1" text-color="blue-grey-9" class="text-weight-medium">
+                        <q-icon name="admin_panel_settings" size="14px" class="q-mr-xs" />
+                        {{ indicator.assigned_role || 'Unassigned' }}
+                      </q-badge>
+                      <span class="text-caption text-grey-6">
+                        {{ indicator.items?.length || 0 }} item{{ (indicator.items?.length || 0) === 1 ? '' : 's' }}
+                      </span>
+                    </div>
                   </div>
-                  <q-space />
+                  <q-btn
+                    v-if="canManageItems(indicator)"
+                    flat
+                    round
+                    dense
+                    icon="playlist_add"
+                    color="primary"
+                    @click="openCreateItem(indicator)"
+                  >
+                    <q-tooltip>Add evaluation item</q-tooltip>
+                  </q-btn>
                 </q-card-section>
                 <q-list separator>
-                  <q-item v-for="(item, itemIndex) in indicator.items" :key="item._id">
-                    <q-item-section avatar><q-avatar color="blue-grey-1" text-color="blue-grey-9" size="30px">{{ item.sort_order }}</q-avatar></q-item-section>
-                    <q-item-section><q-item-label>{{ item.name }}</q-item-label></q-item-section>
+                  <q-item v-for="(item, itemIndex) in indicator.items" :key="item._id" class="evaluation-item">
+                    <q-item-section avatar>
+                      <q-avatar color="grey-2" text-color="grey-8" size="28px">{{ item.sort_order || itemIndex + 1 }}</q-avatar>
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label class="text-body2 text-weight-medium">{{ item.name }}</q-item-label>
+                    </q-item-section>
                     <q-item-section side>
-                      <q-btn v-if="canManageItems(indicator)" flat round dense icon="edit" color="primary" @click="openEditItem(indicator, item, itemIndex)" />
-                      <q-btn v-if="canManageItems(indicator)" flat round dense icon="delete_outline" color="negative" @click="deleteItem(indicator, itemIndex)" />
+                      <div v-if="canManageItems(indicator)" class="row no-wrap">
+                        <q-btn flat round dense icon="edit" color="primary" @click="openEditItem(indicator, item, itemIndex)">
+                          <q-tooltip>Edit item</q-tooltip>
+                        </q-btn>
+                        <q-btn flat round dense icon="delete_outline" color="negative" @click="deleteItem(indicator, itemIndex)">
+                          <q-tooltip>Delete item</q-tooltip>
+                        </q-btn>
+                      </div>
                     </q-item-section>
                   </q-item>
-                  <q-item v-if="!indicator.items || !indicator.items.length"><q-item-section class="text-caption text-grey-6">No evaluation items.</q-item-section></q-item>
+                  <q-item v-if="!indicator.items || !indicator.items.length" class="empty-items">
+                    <q-item-section avatar><q-icon name="playlist_add" color="grey-5" /></q-item-section>
+                    <q-item-section class="text-caption text-grey-6">No evaluation items configured.</q-item-section>
+                  </q-item>
                 </q-list>
-                <q-card-actions v-if="canManageItems(indicator)" align="right">
-                  <q-btn flat dense color="primary" icon="playlist_add" label="Add Item" @click="openCreateItem(indicator)" />
-                </q-card-actions>
               </q-card>
             </q-card-section>
             <q-card-section v-else class="text-center text-grey-6 q-pa-xl">No indicators configured.</q-card-section>
@@ -189,6 +236,8 @@
 </template>
 
 <script>
+import api from 'src/API/api.js'
+
 export default {
   name: 'EvaluationDetailsWorkspace',
 
@@ -274,6 +323,13 @@ export default {
       return this.evaluation?.status === 'DRAFT';
     },
 
+    totalEvaluationItems () {
+      return (this.evaluation?.indicators || []).reduce(
+        (total, indicator) => total + (indicator.items?.length || 0),
+        0
+      );
+    },
+
     currentUserRoles () {
       const storedRoles = localStorage.getItem('userRoles');
       if (!storedRoles) return [];
@@ -317,10 +373,24 @@ export default {
   },
 
   methods: {
+    formatSemester (value) {
+      switch (String(value)) {
+        case '21': return '1st Semester';
+        case '22': return '2nd Semester';
+        case '23': return 'Summer';
+        default: return 'Unknown Semester';
+      }
+    },
+
     canManageItems (indicator) {
       if (!this.isDraft) return false;
       const assignedRole = String(indicator?.assigned_role || '').trim().toUpperCase();
-      return Boolean(assignedRole && this.currentUserRoles.includes(assignedRole)) || this.currentUserRoles.includes('admin'.toUpperCase());
+        const editableRoles = ['CHAIRPERSON', 'COORDINATOR'];
+
+        return editableRoles.includes(assignedRole) && (
+          this.currentUserRoles.includes(assignedRole) ||
+          this.currentUserRoles.includes('ADMIN')
+        );
     },
 
     openAssignMember () {
@@ -371,102 +441,57 @@ export default {
       this.loading = true;
       const targetId = this.$route.params.id;
 
-      // Simulate API Network trip latency
-      await new Promise((resolve) => {
-        return setTimeout(resolve, 500);
-      });
+      if (!targetId) {
+        throw new Error('Evaluation id is required.');
+      }
 
-      // Hydrating fully detailed structural evaluation instance mapping
-      this.evaluation = {
-        _id: targetId,
-        acad_year: "2026-2027",
-        sem: 1,
-        course_code: "CS-312",
-        course_title: "Database Management Systems II",
-        dept_code: "DCS",
-        status: "DRAFT", // Can test changes by toggling between 'DRAFT' and 'ACTIVE'
-        
-        // 👥 Tab 4 - Members Mapped Profiles
-        members: [
-          { 
-            _id: "m_01", 
-            fullname: "Azarael Corpin", 
-            email: "azarael.corpin@msugensan.edu.ph", 
-            role: "COORDINATOR" 
-          },
-          { 
-            _id: "m_02", 
-            fullname: "John Doe", 
-            email: "j.doe@msugensan.edu.ph", 
-            role: "MEMBER" 
-          },
-          { 
-            _id: "m_03", 
-            fullname: "Jane Smith", 
-            email: "j.smith@msugensan.edu.ph", 
-            role: "MEMBER" 
-          }
-        ],
-        
-        // 📋 Tab 1 - Indicators and Nested Criteria Items
-        indicators: [
-          {
-            _id: "ind_sample_01",
-            evaluation_id: targetId,
-            name: "Instructional Delivery & Mastery",
-            sort_order: 1,
-            assigned_role: "COORDINATOR",
-            items: [
-              { 
-                _id: "item_sample_A", 
-                indicator_id: "ind_sample_01", 
-                name: "The instructor sets up index parameters explaining normalization correctly.", 
-                sort_order: 1 
-              },
-              { 
-                _id: "item_sample_B", 
-                indicator_id: "ind_sample_01", 
-                name: "Relates relational execution profiles back to live performance queries.", 
-                sort_order: 2 
-              }
-            ]
-          }
-        ]
+      try {
+        const response = await api.getByEvaluation_Id(targetId);
+
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluation details.');
+        }
+
+        const details = Array.isArray(response.data) ? response.data[0] : response.data;
+        if (!details) throw new Error('Evaluation details were not found.');
+
+        this.evaluation = this.normalizeEvaluationDetails(details);
+        this.actionReports = details.actionReports || details.action_reports || [];
+        this.responseStats = details.responseStats || details.response_stats || [];
+      } catch (error) {
+        this.evaluation = null;
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load evaluation details.'
+        });
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    normalizeEvaluationDetails (details) {
+      const indicators = details.indicators || details.evaluation_indicators || [];
+      const evaluationItems = details.evaluation_items || details.evaluationItems || [];
+
+      return {
+        ...details,
+        indicators: indicators.map((indicator) => {
+          const indicatorItems = indicator.items || indicator.evaluation_items || indicator.evaluationItems;
+          const items = indicatorItems?.length ? indicatorItems : evaluationItems.filter((item) => {
+            const itemIndicatorId = item.indicator_id || item.indicatorId;
+            return String(itemIndicatorId) === String(indicator._id || indicator.id);
+          });
+
+          return {
+            ...indicator,
+            items: Array.isArray(items) ? items.map((item, index) => ({
+              ...item,
+              sort_order: item.sort_order || item.sortOrder || index + 1,
+              name: item.name || item.item_name || item.itemName || item.question || 'Unnamed evaluation item'
+            })) : []
+          };
+        })
       };
-
-      // 📑 Tab 2 - Action Documentation Reports List
-      this.actionReports = [
-        { 
-          _id: "rep_01", 
-          title: "Mid-Term Delivery Evaluation Report", 
-          author: "Azarael Corpin", 
-          status: "APPROVED" 
-        },
-        { 
-          _id: "rep_02", 
-          title: "Syllabus Compliance Checklist", 
-          author: "John Doe", 
-          status: "PENDING" 
-        }
-      ];
-
-      // 📊 Tab 3 - Aggregated Quantitative Metric Data Averages
-      this.responseStats = [
-        { 
-          _id: "stat_01", 
-          indicator_name: "Instructional Delivery & Mastery", 
-          total_respondents: 45, 
-          current_average: 4.65 
-        },
-        { 
-          _id: "stat_02", 
-          indicator_name: "Overall Course Structure Alignment", 
-          total_respondents: 45, 
-          current_average: 4.12 
-        }
-      ];
-
-      this.loading = false;
     },
 
     getStatusColor (status) {
@@ -602,7 +627,7 @@ export default {
 
       this.formItem = {
         _id: null,
-        indicator_id: parentIndicator._id,
+        indicator_id: parentIndicator._id || parentIndicator.id || parentIndicator.indicator_id,
         name: '',
         sort_order: (parentIndicator.items?.length || 0) + 1
       };
@@ -633,26 +658,57 @@ export default {
       };
     },
 
-    deleteItem (parentIndicator, index) {
+    async deleteItem (parentIndicator, index) {
       if (!this.isDraft || !this.canManageItems(parentIndicator)) {
         this.notifyStateLockout();
         return;
       }
 
-      parentIndicator.items.splice(index, 1);
-      
-      this.$q.notify({ 
-        type: 'info', 
-        message: 'Target prompt criterion dropped.' 
+      const item = parentIndicator.items[index];
+      const confirmed = await this.confirmItemAction('Are you sure you want to delete this evaluation item?');
+      if (!confirmed) return;
+
+      this.saving = true;
+
+      try {
+        const response = await api.deleteEvaluationItem(item._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to delete evaluation item.');
+        }
+
+        parentIndicator.items.splice(index, 1);
+        this.$q.notify({ type: 'positive', message: 'Evaluation item deleted.' });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Unable to delete evaluation item.'
+        });
+      } finally {
+        this.saving = false;
+      }
+    },
+
+    confirmItemAction (message) {
+      return new Promise((resolve) => {
+        this.$q.dialog({
+          title: 'Confirm Evaluation Item Change',
+          message,
+          cancel: true,
+          persistent: true
+        })
+          .onOk(() => resolve(true))
+          .onCancel(() => resolve(false))
+          .onDismiss(() => resolve(false));
       });
     },
 
     // --- 🛠️ Shared Form Submission Interceptor Operations ---
-    handleDialogFormSubmission () {
+    async handleDialogFormSubmission () {
       if (this.dialog.type === 'INDICATOR') {
         this.processIndicatorMutation();
       } else if (this.dialog.type === 'ITEM') {
-        this.processItemMutation();
+        const saved = await this.processItemMutation();
+        if (saved === false) return;
       }
       
       this.dialog.show = false;
@@ -671,23 +727,112 @@ export default {
       }
     },
 
-    processItemMutation () {
+    async processItemMutation () {
       const targetedIndicator = this.dialog.targetRef;
-      
-      if (!targetedIndicator.items) {
-        targetedIndicator.items = [];
+      const items = targetedIndicator.items || [];
+      const itemName = String(this.formItem.name || '').trim().toLowerCase();
+      const itemSortOrder = Number(this.formItem.sort_order);
+      const duplicateItem = items.some((item, index) => {
+        if (this.dialog.index !== null && index === this.dialog.index) return false;
+
+        return Number(item.sort_order) === itemSortOrder ||
+          String(item.name || '').trim().toLowerCase() === itemName;
+      });
+
+      if (duplicateItem) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Each evaluation item must have a unique sort order and question.'
+        });
+        return false;
       }
 
-      if (this.dialog.index !== null) {
-        // Handle checklist sub-item item edit substitutions
-        targetedIndicator.items.splice(this.dialog.index, 1, { ...this.formItem });
-        this.$q.notify({ type: 'positive', message: 'Criteria questionnaire updated.' });
-      } else {
-        // Handle checklist sub-item creations
-        this.formItem._id = 'itm_' + Date.now();
-        targetedIndicator.items.push({ ...this.formItem });
-        this.$q.notify({ type: 'positive', message: 'Questionnaire prompt indexed.' });
+      this.formItem.name = String(this.formItem.name || '').trim();
+      targetedIndicator.items = items;
+
+      const indicatorId = this.formItem.indicator_id ||
+        targetedIndicator._id ||
+        targetedIndicator.id ||
+        targetedIndicator.indicator_id;
+      const isEditing = this.dialog.index !== null;
+
+      if (!indicatorId) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Cannot save evaluation item because its indicator_id is missing.'
+        });
+        return false;
       }
+
+      if (isEditing && !this.formItem._id) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Cannot update evaluation item because its id is missing.'
+        });
+        return false;
+      }
+
+      const confirmed = await this.confirmItemAction(
+        `Confirm ${isEditing ? 'updating' : 'adding'} this evaluation item?`
+      );
+      if (!confirmed) return false;
+
+      this.saving = true;
+
+      try {
+        const payload = {
+          _id: this.formItem._id,
+          indicator_id: indicatorId,
+          name: this.formItem.name,
+          sort_order: Number(this.formItem.sort_order)
+        };
+        const response = isEditing
+          ? await api.updateEvaluationItem(payload)
+          : await api.createEvaluationItem(payload);
+
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || `Failed to ${isEditing ? 'update' : 'create'} evaluation item.`);
+        }
+
+        const returnedItem = response.data && !Array.isArray(response.data)
+          ? response.data
+          : payload;
+        const savedItem = { ...payload, ...returnedItem };
+
+        if (isEditing) {
+          targetedIndicator.items.splice(this.dialog.index, 1, savedItem);
+        } else {
+          targetedIndicator.items.push(savedItem);
+        }
+
+        this.sortEvaluationItems(targetedIndicator);
+        this.$q.notify({
+          type: 'positive',
+          message: `Evaluation item ${isEditing ? 'updated' : 'added'}.`
+        });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Unable to save evaluation item.'
+        });
+        return false;
+      } finally {
+        this.saving = false;
+      }
+
+      return true;
+    },
+
+    sortEvaluationItems (indicator) {
+      indicator.items.sort((firstItem, secondItem) => {
+        const firstOrder = Number(firstItem.sort_order);
+        const secondOrder = Number(secondItem.sort_order);
+
+        if (Number.isNaN(firstOrder) && Number.isNaN(secondOrder)) return 0;
+        if (Number.isNaN(firstOrder)) return 1;
+        if (Number.isNaN(secondOrder)) return -1;
+        return firstOrder - secondOrder;
+      });
     }
   }
 };
@@ -695,6 +840,53 @@ export default {
 </script>
 
 <style scoped>
+.details-heading {
+  min-height: 78px;
+}
+.details-summary {
+  display: flex;
+  gap: 18px;
+}
+.details-summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.1;
+}
+.indicator-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: #f8fafc;
+}
+.indicator-card {
+  overflow: hidden;
+  border-color: #e1e7ed;
+  border-radius: 8px;
+}
+.indicator-header {
+  display: flex;
+  align-items: center;
+  min-height: 74px;
+  background: #ffffff;
+}
+.indicator-number {
+  flex: 0 0 auto;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.evaluation-item {
+  min-height: 58px;
+  background: #ffffff;
+  transition: background-color 0.15s ease;
+}
+.evaluation-item:hover {
+  background: #f8fafc;
+}
+.empty-items {
+  min-height: 64px;
+  background: #fcfdfe;
+}
 .font-mono {
   font-family: monospace;
 }
@@ -704,5 +896,18 @@ export default {
 .transition-hover:hover {
   background-color: #f8fafc;
   transition: background-color 0.15s ease-in-out;
+}
+@media (max-width: 600px) {
+  .details-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .details-summary-stat {
+    align-items: flex-start;
+  }
+  .indicator-header {
+    align-items: flex-start;
+  }
 }
 </style>

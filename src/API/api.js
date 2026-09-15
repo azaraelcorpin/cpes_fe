@@ -537,6 +537,100 @@ export default {
       }
     },    
 
+    async getByEvaluation_Id(id){
+      var path = '/api/course-evaluation/evaluations/getEvaluationFormDetails'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { _id: id }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getByEvaluation_Id Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async updateEvaluation(payload){
+      var path = '/api/course-evaluation/evaluations/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = payload  
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getEvaluationTemplateByType Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
+    async createEvaluationItem(payload){
+      var path = '/api/course-evaluation/evaluation-items/create'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, payload, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('createEvaluationItem Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    async updateEvaluationItem(payload){
+      var path = '/api/course-evaluation/evaluation-items/update'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, payload, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('updateEvaluationItem Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    async deleteEvaluationItem(id){
+      var path = '/api/course-evaluation/evaluation-items/delete'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, { _id: id }, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('deleteEvaluationItem Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    
+    
     //#endregion course_eval API
 
 
