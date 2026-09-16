@@ -1,6 +1,6 @@
 <template>
   <q-page padding class="bg-grey-1">
-    
+
     <!-- 1. Keep Breadcrumbs Safe (Use fallback text if loading) -->
     <q-breadcrumbs class="q-mb-md text-caption">
       <q-breadcrumbs-el label="Evaluations Management" icon="assignment" to="/course-evaluations" />
@@ -9,7 +9,7 @@
 
     <!-- 2. WRAP ALL CORE ACTIONS IN V-IF -->
     <div v-if="evaluation">
-      
+
       <!-- High-Level Context Header Panel -->
       <q-card flat bordered class="bg-white q-mb-md shadow-1" style="border-radius: 8px;">
         <q-card-section class="row items-center q-py-md">
@@ -20,15 +20,24 @@
             <div class="text-caption text-grey-6 font-mono q-mt-xs">
               AY: {{ evaluation.acad_year }} | Semester: {{ formatSemester(evaluation.sem) }} | Dept: {{ evaluation.dept_code }}
             </div>
-            
+
             <div v-if="evaluation.status === 'ACTIVE'" class="text-caption text-negative text-weight-bold q-mt-xs row items-center">
               <q-icon name="lock" class="q-mr-xs" /> System Lock: Details are read-only unless the evaluation is in DRAFT status.
             </div>
           </div>
           <q-space />
-          <q-badge rounded :color="getStatusColor(evaluation.status)" class="q-px-md q-py-xs text-weight-bold">
-            {{ evaluation.status }}
-          </q-badge>
+          <div class="row items-center q-gutter-sm">
+            <q-btn
+              unelevated
+              color="primary"
+              icon="assignment"
+              label="Student Course Evaluation"
+              :to="{ name: 'studentCourseEvaluation', params: { id: evaluation._id } }"
+            />
+            <q-badge rounded :color="getStatusColor(evaluation.status)" class="q-px-md q-py-xs text-weight-bold">
+              {{ evaluation.status }}
+            </q-badge>
+          </div>
         </q-card-section>
       </q-card>
 
@@ -72,13 +81,12 @@
                     {{ indicator.sort_order || indicatorIndex + 1 }}
                   </q-avatar>
                   <div class="col q-ml-md">
-                    <div class="text-subtitle2 text-weight-bold text-grey-9">{{ indicator.name }}</div>
-                    <div class="row items-center q-gutter-sm q-mt-xs">
-                      <q-badge color="blue-grey-1" text-color="blue-grey-9" class="text-weight-medium">
-                        <q-icon name="admin_panel_settings" size="14px" class="q-mr-xs" />
-                        {{ indicator.assigned_role || 'Unassigned' }}
-                      </q-badge>
-                      <span class="text-caption text-grey-6">
+                    <div class="text-subtitle1 text-weight-bold text-grey-9">
+                      {{ indicator.indicator_name || indicator.name }}
+                    </div>
+                    <div class="row items-center q-gutter-none q-mt-none text-caption text-grey-6">
+                      <span class="text-weight-medium">{{ indicator.assigned_role || 'Unassigned' }}</span>
+                      <span class="q-ml-xs">
                         {{ indicator.items?.length || 0 }} item{{ (indicator.items?.length || 0) === 1 ? '' : 's' }}
                       </span>
                     </div>
@@ -248,11 +256,11 @@ export default {
       loading: false,
       saving: false,
       activeTab: 'details',
-      
+
       // Dynamic Component Data Pools
       actionReports: [],
       responseStats: [],
-      
+
       // Modal Forms Interaction Tracker State
       dialog: {
         show: false,
@@ -298,7 +306,7 @@ export default {
           email: 'liza.cruz@msugensan.edu.ph'
         }
       ],
-      
+
       // Form Model Blueprints matching schema signatures
       formIndicator: {
         _id: null,
@@ -308,7 +316,7 @@ export default {
         assigned_role: 'COORDINATOR',
         items: []
       },
-      
+
       formItem: {
         _id: null,
         indicator_id: null,
@@ -571,7 +579,7 @@ export default {
         assigned_role: 'STUDENT',
         items: []
       };
-      
+
       this.dialog = {
         show: true,
         type: 'INDICATOR',
@@ -588,7 +596,7 @@ export default {
       }
 
       this.formIndicator = { ...indicator };
-      
+
       this.dialog = {
         show: true,
         type: 'INDICATOR',
@@ -611,9 +619,9 @@ export default {
         persistent: true
       }).onOk(() => {
         this.evaluation.indicators.splice(index, 1);
-        this.$q.notify({ 
-          type: 'info', 
-          message: 'Indicator profile subset discarded.' 
+        this.$q.notify({
+          type: 'info',
+          message: 'Indicator profile subset discarded.'
         });
       });
     },
@@ -710,7 +718,7 @@ export default {
         const saved = await this.processItemMutation();
         if (saved === false) return;
       }
-      
+
       this.dialog.show = false;
     },
 

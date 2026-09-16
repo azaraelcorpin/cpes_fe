@@ -48,7 +48,7 @@
               </div>
             </div>
           </q-menu>
-        </q-btn>        
+        </q-btn>
       </q-toolbar>
     </q-header>
 
@@ -58,14 +58,14 @@
           <div>MSU GenSan - ICTO</div>
           <div>CPES v{{ $version}}</div>
         </q-toolbar>
-        
+
       </q-footer>
 
       <!-- This Configuration for Drawer with no mini state and not over lay -->
       <!-- <q-drawer
       v-model="leftDrawerOpen"
       show-if-above
-      
+
       :width="250"
       :breakpoint="500"
       bordered
@@ -96,7 +96,7 @@
                 <strong>MSU-GENSAN</strong>
               </q-item-section>
             </q-item>
-            
+
             <div v-for="item in routes" :key="item.path" link>
               <div v-if="item.visible && checkRoles(item.meta.roles)">
                 <q-item v-if="!item.children" clickable v-ripple :to="item.path">
@@ -108,14 +108,14 @@
                     {{ item.meta.title }}
                   </q-item-section>
                 </q-item>
-              
+
                 <div v-else>
-                  <q-expansion-item  
+                  <q-expansion-item
                     :model-value="$route.matched.find(x => x.name === item.name)?true:false"
-                    :content-inset-level="0.3" 
-                    expand-separator 
-                    :icon="item.icon" 
-                    :label="item.meta.title" 
+                    :content-inset-level="0.3"
+                    expand-separator
+                    :icon="item.icon"
+                    :label="item.meta.title"
                     expand-icon-class="text-white"
                     >
                       <div  v-for="child in item.children" :key="child.path" link>
@@ -130,7 +130,7 @@
                         </q-item>
                       </div>
                 </q-expansion-item>
-                
+
               </div>
               </div>
             </div>
@@ -140,7 +140,7 @@
 
     <q-page-container >
       <div class="custom"></div>
-      <Transition 
+      <Transition
         name="fade-transform"
         mode="out-in"
       >
@@ -174,8 +174,8 @@ export default defineComponent({
     const monitorCookie = () => {
       intervalId = setInterval(() => {
         console.log('Monitoring',cookies.isKey('_UID_'))
-        if(!cookies.isKey('_UID_')){ 
-              localStorage.clear();               
+        if(!cookies.isKey('_UID_')){
+              localStorage.clear();
               router.push({name:'signIn'});
         }
       }, 5000); // Check every second
@@ -212,7 +212,7 @@ export default defineComponent({
         }
       }
       return "https://cdn.quasar.dev/img/avatar4.jpg";
-    }, 
+    },
     // Define the function to check user roles
     checkRoles(roles) {
       const requiredRoles = roles;
@@ -228,25 +228,37 @@ export default defineComponent({
           return true;
         } else {
           // User does not have the required role, deny access or redirect to an access denied page
-          return false;  
+          return false;
         }
       } else {
         // No specific roles required for this route, allow access
         return true;
       }
     },
-    
+
     asDev(param){
       if(param)
         localStorage.setItem("ImDev", "hashem")
       else
         localStorage.removeItem("ImDev");
-    }   
+    }
 
   },
 })
 </script>
 <style>
+.q-layout {
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.q-page-container {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .drawer-with-bg {
   background-image: url('../assets/bg.jpeg');
   background-size: cover;
@@ -278,7 +290,7 @@ export default defineComponent({
   background: url( '../assets/MSU_Gensan_logoa.png') no-repeat center center;
   background-size: cover;
   opacity: 0.1;
-  
+
 }
 
 </style>

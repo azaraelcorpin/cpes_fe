@@ -25,8 +25,8 @@ const routes = [
     visible:true,
   },
 
-  //#region Evaluation Management 
-  
+  //#region Evaluation Management
+
 {
   path: '/manage-evaluations',
     name: 'manageEvaluations',
@@ -62,6 +62,21 @@ const routes = [
                 icon: 'analytics',
                 visible: false, // Set to false so it does not show up as a raw link in your main sidebar menu
               },
+
+              // 3. Student Course Evaluation Page
+              {
+                path: '/manage-evaluations/:id/student-course-evaluation',
+                name: 'studentCourseEvaluation',
+                component: () => import('pages/course_eval/StudentCourseEvaluation.vue'),
+                meta: {
+                  title: 'Student Course Evaluation',
+                  roles: []
+                },
+                icon: 'assignment',
+                visible: false,
+              },
+
+
             ]
 },
 //#endregion Evaluation Management
@@ -104,7 +119,7 @@ const routes = [
         icon:'settings',
         visible:true,
       },
-      // schedule settings  
+      // schedule settings
       {
         path: '/schedule-settings',
         component: () => import('pages/cpes_settings/ScheduleSetting.vue'),
@@ -140,8 +155,8 @@ const routes = [
     },
     icon:'error',
     visible:false,
-  }, 
-  
+  },
+
   ///Sign In
   {
     path: '/signIn',
