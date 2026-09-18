@@ -629,8 +629,80 @@ export default {
       }
     },
 
+    async createEvaluationMember(payload){
+      var path = '/api/course-evaluation/action-members/create'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, payload, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('createEvaluationMember Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    async deleteEvaluationMember(id){
+      var path = '/api/course-evaluation/action-members/delete'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, { _id: id }, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('deleteEvaluationMember Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
     
-    
+    //get evaluation members by evaluation id
+    async getEvaluationMembersByEvaluationId(evaluationId){
+      var path = '/api/course-evaluation/action-members/getAllByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, { evaluation_id: evaluationId }, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getEvaluationMembersByEvaluationId Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
+    //deleteIndicatorsByEvaluationId
+    async deleteIndicatorsByEvaluationId(evaluationId){
+      var path = '/api/course-evaluation/indicators/deleteByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, { evaluation_id: evaluationId }, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('deleteIndicatorsByEvaluationId Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
     //#endregion course_eval API
 
 

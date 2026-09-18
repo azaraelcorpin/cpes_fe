@@ -167,7 +167,12 @@
               <q-item v-for="member in evaluation.members" :key="member._id">
                 <q-item-section avatar><q-avatar color="primary" text-color="white">{{ (member.fullname || 'U').charAt(0) }}</q-avatar></q-item-section>
                 <q-item-section><q-item-label class="text-weight-bold">{{ member.fullname }}</q-item-label><q-item-label caption>{{ member.email }}</q-item-label></q-item-section>
-                <q-item-section side><q-badge color="blue-grey-1" text-color="blue-grey-9">{{ member.role }}</q-badge></q-item-section>
+                <q-item-section side>
+                  <q-badge color="blue-grey-1" text-color="blue-grey-9">{{ member.role }}
+                    <q-btn v-if="canAssignMembers" flat round dense icon="delete" color="primary" @click="removeMember(member)" class="q-ml-sm"><q-tooltip>Remove member</q-tooltip></q-btn>
+                  </q-badge>
+                  <!-- create edit and delete buttons -->
+                </q-item-section>
               </q-item>
             </q-list>
             <q-card-section v-else class="text-center text-grey-6 q-pa-xl">No action members assigned.</q-card-section>
@@ -245,6 +250,8 @@
 
 <script>
 import api from 'src/API/api.js'
+import sampleFacultyList from 'src/pages/course_eval/sampleFaculties.json'
+import myDialog from 'src/plugins/myDialog';
 
 export default {
   name: 'EvaluationDetailsWorkspace',
@@ -255,7 +262,7 @@ export default {
       evaluation: null,
       loading: false,
       saving: false,
-      activeTab: 'details',
+      activeTab: this.$route.query?.tab || 'details',
 
       // Dynamic Component Data Pools
       actionReports: [],
@@ -280,32 +287,7 @@ export default {
       },
 
       // Sample faculty records from the faculty directory schema.
-      faculties: [
-        {
-          employeeId: 1001,
-          departmentId: 10,
-          employeeNumber: 'EMP-001001',
-          dept_code: 'DCS',
-          fullname: 'Maria Santos',
-          email: 'maria.santos@msugensan.edu.ph'
-        },
-        {
-          employeeId: 1002,
-          departmentId: 10,
-          employeeNumber: 'EMP-001002',
-          dept_code: 'DCS',
-          fullname: 'Pedro Reyes',
-          email: 'pedro.reyes@msugensan.edu.ph'
-        },
-        {
-          employeeId: 1003,
-          departmentId: 20,
-          employeeNumber: 'EMP-001003',
-          dept_code: 'DMS',
-          fullname: 'Liza Cruz',
-          email: 'liza.cruz@msugensan.edu.ph'
-        }
-      ],
+      faculties: sampleFacultyList,
 
       // Form Model Blueprints matching schema signatures
       formIndicator: {
@@ -324,6 +306,12 @@ export default {
         sort_order: 1
       }
     };
+  },
+  
+  watch: {
+    activeTab (newTab) {
+      this.$router.replace({ query: { ...this.$route.query, tab: newTab }});
+    }
   },
 
   computed: {
@@ -372,7 +360,7 @@ export default {
 
     availableFaculties () {
       const assignedEmails = (this.evaluation?.members || []).map(member => String(member.email || '').trim().toLowerCase());
-      return this.faculties.filter(faculty => !assignedEmails.includes(String(faculty.email || '').trim().toLowerCase()));
+      return this.faculties.filter(faculty => !assignedEmails.includes(String(faculty.email || '').trim().toLowerCase())).filter(faculty => faculty.dept_code === this.evaluation.dept_code );
     }
   },
 
@@ -401,6 +389,30 @@ export default {
         );
     },
 
+    //Remove member from evaluation members list
+    async removeMember(member){
+      if (!this.canAssignMembers) {
+        this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON can remove evaluation members.' });
+        return;
+      }
+
+      const confirmed = await myDialog.confirm(this.$q,'Confirm Member Removal',`Are you sure you want to remove ${member.fullname} from this evaluation?`);
+      if (!confirmed) return;
+
+      try{
+        const response = await api.deleteEvaluationMember(member._id);
+        if(!response || response.error || !response.success){
+          throw new Error(response?.error?.response?.data?.message || 'Failed to remove member.');
+        }
+        this.$q.notify({ type: 'positive', message: `${member.fullname} removed successfully.` });
+        this.fetchEvaluationMembers();
+
+      }catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to remove member.' });
+        return;
+      }
+    },
+
     openAssignMember () {
       if (!this.canAssignMembers) {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON can assign evaluation members.' });
@@ -410,39 +422,78 @@ export default {
       this.memberDialog.show = true;
     },
 
-    assignMember () {
+    async assignMember () {
       if (!this.canAssignMembers) {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON can assign evaluation members.' });
         return;
       }
-
+      
       const faculty = this.selectedFaculty;
       if (!faculty) return;
 
       const facultyEmail = String(faculty.email || '').trim().toLowerCase();
-      const alreadyAssigned = this.evaluation.members.some(member => String(member.email || '').trim().toLowerCase() === facultyEmail);
+      const alreadyAssigned = this.evaluation.members?.some(member => String(member.email || '').trim().toLowerCase() === facultyEmail);
+
       if (alreadyAssigned) {
         this.$q.notify({ type: 'warning', message: `${faculty.fullname} is already assigned to this evaluation.` });
         return;
       }
 
-      if (this.memberForm.role === 'COORDINATOR' && this.evaluation.members.some(member => member.role === 'COORDINATOR')) {
+      if (this.memberForm.role === 'COORDINATOR' && this.evaluation.members?.some(member => member.role === 'COORDINATOR')) {
         this.$q.notify({ type: 'warning', message: 'Only one COORDINATOR can be assigned to an evaluation.' });
         return;
       }
 
-      this.evaluation.members.push({
-        _id: `member_${faculty.employeeId}`,
-        employeeId: faculty.employeeId,
-        departmentId: faculty.departmentId,
-        employeeNumber: faculty.employeeNumber,
-        dept_code: faculty.dept_code,
+      if(!this.evaluation.members) {
+        this.evaluation.members = [];
+      }
+
+      const newMember = {
+        evaluation_id: this.evaluation._id,
         fullname: faculty.fullname,
         email: faculty.email,
         role: this.memberForm.role
-      });
+      }
+      try {
+        const response = await api.createEvaluationMember(newMember);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to assign member.');
+        }
+        this.fetchEvaluationMembers();
+
+      }catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to assign member.' });
+        return;
+      }
       this.memberDialog.show = false;
       this.$q.notify({ type: 'positive', message: `${faculty.fullname} assigned successfully.` });
+    },
+
+    // get all evaluation members for the current evaluation
+    async fetchEvaluationMembers () {
+      const targetId = this.$route.params.id;
+
+      if (!targetId) {
+        throw new Error('Evaluation id is required.');
+      }
+
+      try {
+        const response = await api.getEvaluationMembersByEvaluationId(targetId);
+
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluation members.');
+        }
+        console.log('evaluation Member',this.evaluation)
+        if(!this.evaluation.members)
+          this.evaluation.members = [];
+        this.evaluation.members = Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        this.evaluation.members = [];
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load evaluation members.'
+        });
+      }
     },
 
     async fetchDeepEvaluationStructure () {
@@ -466,6 +517,7 @@ export default {
         this.evaluation = this.normalizeEvaluationDetails(details);
         this.actionReports = details.actionReports || details.action_reports || [];
         this.responseStats = details.responseStats || details.response_stats || [];
+        this.fetchEvaluationMembers(targetId);
       } catch (error) {
         this.evaluation = null;
         this.$q.notify({

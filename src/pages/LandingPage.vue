@@ -67,7 +67,7 @@
         <div class="signin-divider"><span>secure access</span></div>
         <div class="google-login-wrap">
           <GoogleLogin
-            clientId="247346265934-ksi885k87vtrcqh7tvmcgeca9fvqr0fd.apps.googleusercontent.com"
+            clientId="613774726934-4pb0to5eeen42833782d7137v7583hr9.apps.googleusercontent.com"
             :callback="callback"
           />
         </div>

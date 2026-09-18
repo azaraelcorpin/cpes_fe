@@ -1,0 +1,162 @@
+[
+  {
+    "employeeId": 1,
+    "departmentId": 100,
+    "employeeNumber": "EMP-2026-1001",
+    "dept_code": "COE",
+    "fullname": "Robert Flores",
+    "email": "robert.flores@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 2,
+    "departmentId": 110,
+    "employeeNumber": "EMP-2026-1002",
+    "dept_code": "CBA",
+    "fullname": "David Dela Cruz",
+    "email": "david.delacruz@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 3,
+    "departmentId": 120,
+    "employeeNumber": "EMP-2026-1003",
+    "dept_code": "COA",
+    "fullname": "Maria Valenzuela",
+    "email": "maria.valenzuela@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 4,
+    "departmentId": 130,
+    "employeeNumber": "EMP-2026-1004",
+    "dept_code": "ABM",
+    "fullname": "Elena Reyes",
+    "email": "elena.reyes@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 5,
+    "departmentId": 140,
+    "employeeNumber": "EMP-2026-1005",
+    "dept_code": "CNSM",
+    "fullname": "James Castro",
+    "email": "james.castro@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 6,
+    "departmentId": 100,
+    "employeeNumber": "EMP-2026-1006",
+    "dept_code": "CNSM",
+    "fullname": "Michael Garcia",
+    "email": "michael.garcia@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 7,
+    "departmentId": 110,
+    "employeeNumber": "EMP-2026-1007",
+    "dept_code": "CBA",
+    "fullname": "Mary Torres",
+    "email": "mary.torres@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 8,
+    "departmentId": 120,
+    "employeeNumber": "EMP-2026-1008",
+    "dept_code": "COE",
+    "fullname": "Christian Bautista",
+    "email": "christian.bautista@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 9,
+    "departmentId": 130,
+    "employeeNumber": "EMP-2026-1009",
+    "dept_code": "COA",
+    "fullname": "Ana Lim",
+    "email": "ana.lim@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 10,
+    "departmentId": 140,
+    "employeeNumber": "EMP-2026-1010",
+    "dept_code": "CSSH",
+    "fullname": "Joseph Ramos",
+    "email": "joseph.ramos@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 11,
+    "departmentId": 100,
+    "employeeNumber": "EMP-2026-1011",
+    "dept_code": "COE",
+    "fullname": "Juan Aquino",
+    "email": "juan.aquino@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 12,
+    "departmentId": 110,
+    "employeeNumber": "EMP-2026-1012",
+    "dept_code": "COA",
+    "fullname": "John Dizon",
+    "email": "john.dizon@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 13,
+    "departmentId": 120,
+    "employeeNumber": "EMP-2026-1013",
+    "dept_code": "ABM",
+    "fullname": "Mark Mendoza",
+    "email": "mark.mendoza@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 14,
+    "departmentId": 130,
+    "employeeNumber": "EMP-2026-1014",
+    "dept_code": "CNSM",
+    "fullname": "Sarah Perez",
+    "email": "sarah.perez@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 15,
+    "departmentId": 140,
+    "employeeNumber": "EMP-2026-1015",
+    "dept_code": "ABM",
+    "fullname": "Patricia Villanueva",
+    "email": "patricia.villanueva@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 16,
+    "departmentId": 100,
+    "employeeNumber": "EMP-2026-1016",
+    "dept_code": "COE",
+    "fullname": "Princess Santos",
+    "email": "princess.santos@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 17,
+    "departmentId": 110,
+    "employeeNumber": "EMP-2026-1017",
+    "dept_code": "COA",
+    "fullname": "Grace Cruz",
+    "email": "grace.cruz@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 18,
+    "departmentId": 120,
+    "employeeNumber": "EMP-2026-1018",
+    "dept_code": "CNSM",
+    "fullname": "Christine Santiago",
+    "email": "christine.santiago@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 19,
+    "departmentId": 130,    
+    "employeeNumber": "EMP-2026-1019",
+    "dept_code": "ABM",
+    "fullname": "Jose Soriano",
+    "email": "jose.soriano@msugensan.edu.ph"
+  },
+  {
+    "employeeId": 20,
+    "departmentId": 140,
+    "employeeNumber": "EMP-2026-1020",
+    "dept_code": "ABM",
+    "fullname": "Angela Gonzales",
+    "email": "angela.gonzales@msugensan.edu.ph"
+  }
+]
