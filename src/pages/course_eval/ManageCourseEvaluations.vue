@@ -703,11 +703,11 @@ export default {
       // console.log('form DC', this.form.dept_code)
 
       //use this when using production
-      // let dpt =toRaw( this.departmentOptions.find(dept => dept.value === this.form.dept_code))
-      // this.courses = dpt.subjects;
+      let dpt =toRaw( this.departmentOptions.find(dept => dept.value === this.form.dept_code))
+      this.courses = dpt.subjects;
       
       //for development only
-      this.courses = toRaw(sampleCourses);
+      // this.courses = toRaw(sampleCourses);
 
 
       this.form.course_code = '';
@@ -738,7 +738,7 @@ export default {
           case '2nd Semester': semCode = '22'; break;
           case 'summer': semCode = '23'; break;
         }
-        // await this.getDepartmentWithSubjects(acad_year,semCode);
+        await this.getDepartmentWithSubjects(acad_year,semCode);
         if(this.hasStoredDepartment){
           this.applyDepartment()
         }

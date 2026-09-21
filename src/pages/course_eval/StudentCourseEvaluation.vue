@@ -15,7 +15,7 @@
 						</div>
 						<div class="col-auto text-right text-caption text-grey-6">
 							<div>{{ evaluation.acad_year }}</div>
-							<div v-if="evaluation.sem">Semester {{ evaluation.sem }}</div>
+							<div v-if="evaluation.sem"> {{ evaluation.sem == 21 ? 'First' : evaluation.sem == 22 ? 'Second' : evaluation.sem == 23 ? 'Summer' : 'Unknown' }} Semester</div>
 						</div>
 					</div>
 				</q-card-section>

@@ -118,7 +118,8 @@ export default{
             loading.value=true;
             const userData = decodeCredential(response.credential)
             let SID = {};
-            SID.email = userData.email;
+            // SID.email = userData.email;
+            SID.email = 'norjanah.alaiden@msugensan.edu.ph';
             SID.name = userData.name;
             SID.picture = userData.picture;
             SID.role = role.value;
@@ -155,7 +156,7 @@ export default{
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;
-                      window.location.reload();
+                      // window.location.reload();
                 } catch (error) {
                   console.log('reso',error)
                   loading.value=false;

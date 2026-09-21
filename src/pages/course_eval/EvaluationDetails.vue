@@ -364,8 +364,9 @@ export default {
     }
   },
 
-  mounted () {
-    this.fetchDeepEvaluationStructure();
+  async mounted () {
+    await this.fetchDeepEvaluationStructure();
+    this.fetchFacultiesWithDepartments();
   },
 
   methods: {
@@ -492,6 +493,24 @@ export default {
         this.$q.notify({
           type: 'negative',
           message: error.message || 'Failed to load evaluation members.'
+        });
+      }
+    },
+
+    //getFacultiesWithDepartments from api
+    async fetchFacultiesWithDepartments () {
+      try {
+        const dept_code = this.evaluation?.dept_code;
+        const response = await api.getFacultiesWithDepartments(dept_code);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load faculties.');
+        }
+        this.faculties = Array.isArray(response.data) ? response.data : [];
+      } catch (error) {
+        this.faculties = [];
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load faculties.'
         });
       }
     },

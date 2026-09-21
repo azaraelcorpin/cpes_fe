@@ -703,6 +703,7 @@ export default {
       }
     },
 
+
     //#endregion course_eval API
 
 
@@ -728,6 +729,28 @@ export default {
         return { error: error };
       }
     },
+
+    //getFacultiesWithDepartments
+    async getFacultiesWithDepartments(dept_code){
+      var path = '/api/sais-ext/getFacultiesWithDepartments'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {dept_code}
+      try{
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getFacultiesWithDepartments Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    
     //#endregion sais-ext
     /**
      * @param {String} pdate

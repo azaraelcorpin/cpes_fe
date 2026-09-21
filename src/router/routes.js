@@ -44,7 +44,7 @@ const routes = [
                 component: () => import('pages/course_eval/ManageCourseEvaluations.vue'),
                 meta: {
                   title: 'Course Evaluations',
-                  roles: []
+                  roles: ['CHAIRPERSON', 'DEAN', 'ADMIN']
                 },
                 icon: 'assignment',
                 visible: true,
@@ -80,6 +80,18 @@ const routes = [
             ]
 },
 //#endregion Evaluation Management
+  {
+    path: '/student/enrolled-courses',
+    name:'studentEnrolledCourses',
+    component: () => import('pages/student/StudentEnrolledCourses.vue'),
+    meta:{
+      title:'Enrolled Courses',
+      roles:[]
+    },
+    icon:'school',
+    visible:true,
+  },
+
   ///SysAdmin
   {
     path: '/sysadm',
