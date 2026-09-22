@@ -98,6 +98,7 @@
 
 				<div class="row justify-end q-mt-lg">
 					<q-btn
+					v-if="canSubmit"
 						unelevated
 						color="primary"
 						no-caps
@@ -179,6 +180,9 @@ export default {
 	},
 
 	computed: {
+		canSubmit () {
+			return this.$route.params.course_code
+		},
 		evaluation () {
 			return this.evaluationData || this.evaluationPayload?.data?.[0] || {}
 		},
@@ -242,16 +246,17 @@ export default {
 	methods: {
 		async fetchEvaluationData () {
 			const evaluationId = this.$route.params.id
+			const course_code = this.$route.params.course_code
+			console.log('evaluationId', evaluationId)
 
-			if (!evaluationId) {
-				this.notifyError('Evaluation id is required.')
+			if (!evaluationId && !course_code) {
+				this.notifyError('Evaluation ID or Course Code is missing in the route parameters.')
 				return
 			}
-
 			this.loading = true
 
 			try {
-				const response = await api.getByEvaluation_Id(evaluationId)
+				const response = evaluationId ? await api.getByEvaluation_Id(evaluationId) : await api.getEvaluationFormDetailsByCourseCode(course_code)
 
 				if (!response?.success || !Array.isArray(response.data) || !response.data.length) {
 					throw new Error(response?.error?.response?.data?.message || 'Evaluation details were not found.')

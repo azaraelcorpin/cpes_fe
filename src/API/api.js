@@ -517,6 +517,24 @@ export default {
       }
     },
 
+    async deleteEvaluation(id){
+      var path = '/api/course-evaluation/evaluations/delete'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { _id: id }  
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('deleteEvaluation Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
 
     async getEvaluations(){
       var path = '/api/course-evaluation/evaluations'
@@ -555,6 +573,25 @@ export default {
         return { error:error }
       }
     },
+
+    async getEvaluationFormDetailsByCourseCode(course_code){
+      var path = '/api/course-evaluation/evaluations/getEvaluationFormDetailsByCourseCode'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { course_code: course_code }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getByEvaluation_Id Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },    
 
     async updateEvaluation(payload){
       var path = '/api/course-evaluation/evaluations/update'
@@ -750,7 +787,26 @@ export default {
       }
     },
 
-    
+    //getEnrolledCoursesByEnrollmentId
+    async getEnrolledCoursesByEnrollmentId(enrollmentId){
+      var path = '/api/sais-ext/getEnrolledCoursesByEnrollmentId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {enrollmentId: enrollmentId}
+      try{
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getEnrolledCoursesByEnrollmentId Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
     //#endregion sais-ext
     /**
      * @param {String} pdate

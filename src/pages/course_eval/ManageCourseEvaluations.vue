@@ -189,6 +189,18 @@
               >
                 <q-tooltip>Modify Parameters</q-tooltip>
               </q-btn>
+              <!-- q-btn for removing evaluation -->
+              <q-btn
+                flat
+                round
+                dense
+                icon="delete"
+                color="negative"
+                :disable="!canDeleteEvaluation(props.row)"
+                @click="confirmDeleteEvaluation(props.row)"
+              >
+                <q-tooltip>{{ canDeleteEvaluation(props.row) ? 'Remove Evaluation' : 'Only draft evaluations can be removed' }}</q-tooltip>
+              </q-btn>
             </q-td>
           </q-tr>
         </template>
@@ -257,6 +269,17 @@
                 >
                   <q-tooltip>Modify Parameters</q-tooltip>
                 </q-btn>
+                <q-btn
+                  v-if="canDeleteEvaluation(evaluation)"
+                  flat
+                  round
+                  dense
+                  icon="delete"
+                  color="negative"
+                  @click.stop="confirmDeleteEvaluation(evaluation)"
+                >
+                  <q-tooltip>Remove Evaluation</q-tooltip>
+                </q-btn>
               </q-card-actions>
             </q-card>
           </div>
@@ -316,14 +339,31 @@
                     @click="navigateToDetails(evaluation._id)"
                   >
                     <q-card-section class="q-pa-md">
-                      <div class="text-subtitle2 text-primary text-weight-bold">
-                        {{ evaluation.course_code }}
-                      </div>
-                      <div class="text-body2 text-grey-8 ellipsis-2-lines">
-                        {{ evaluation.course_title }}
-                      </div>
-                      <div class="text-caption text-grey-6 q-mt-sm">
-                        {{ evaluation.dept_code }} · {{ formatSemester(evaluation.sem) }}
+                      <div class="row items-start justify-between q-col-gutter-sm">
+                        <div class="col">
+                          <div class="text-subtitle2 text-primary text-weight-bold">
+                            {{ evaluation.course_code }}
+                          </div>
+                          <div class="text-body2 text-grey-8 ellipsis-2-lines">
+                            {{ evaluation.course_title }}
+                          </div>
+                          <div class="text-caption text-grey-6 q-mt-sm">
+                            {{ evaluation.dept_code }} · {{ formatSemester(evaluation.sem) }}
+                          </div>
+                        </div>
+
+                        <q-btn
+                          v-if="canDeleteEvaluation(evaluation)"
+                          flat
+                          round
+                          dense
+                          icon="delete"
+                          color="negative"
+                          class="pipeline-delete-btn"
+                          @click.stop="confirmDeleteEvaluation(evaluation)"
+                        >
+                          <q-tooltip>Remove Evaluation</q-tooltip>
+                        </q-btn>
                       </div>
                     </q-card-section>
                   </q-card>
@@ -630,6 +670,10 @@ export default {
       this.loading = false;
     },
 
+    canDeleteEvaluation (evaluation) {
+      return String(evaluation?.status || '').toUpperCase() === 'DRAFT'
+    },
+
     getStatusColor (status) {
       if (status === 'ACTIVE') {
         return 'positive';
@@ -770,6 +814,28 @@ export default {
       this.form = { ...row };
       this.editing = true;
       this.dialog = true;
+    },
+
+    async confirmDeleteEvaluation (row) {
+      const confirm = await myDialog.confirm(this.$q, 'Confirm Deletion', 'Are you sure you want to delete this evaluation? This action cannot be undone.');
+      if (!confirm) return;
+
+      try {
+        const response = await api.deleteEvaluation(row._id);
+        if (!response.success) {
+          throw new Error(response.error.response.data.message || 'Failed to delete evaluation');
+        }
+        this.getEvaluations();
+        this.$q.notify({
+          type: 'positive',
+          message: 'Evaluation deleted successfully.'
+        });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Unable to delete evaluation. Please try again.'
+        });
+      }
     },
 
     navigateToDetails (id) {

@@ -5,10 +5,10 @@
         <div class="col-12 col-md-8">
           <div class="text-overline text-primary text-weight-bold header-kicker">Student profile</div>
           <div class="row items-center q-col-gutter-md no-wrap">
-            <div class="avatar-badge">SA</div>
+            <div class="avatar-badge">{{ initials }}</div>
             <div>
-              <div class="text-h5 text-weight-bold text-grey-9">Sarah A. Dela Cruz</div>
-              <div class="text-body2 text-grey-7">Student ID: 2024-000123 &nbsp;•&nbsp; BS Computer Science</div>
+              <div class="text-h5 text-weight-bold text-grey-9">{{ studentDisplayName }}</div>
+              <div class="text-body2 text-grey-7">Student ID: {{ studentIdentifier }} &nbsp;•&nbsp; {{ studentProgram }}</div>
             </div>
           </div>
         </div>
@@ -17,11 +17,11 @@
           <div class="summary-grid">
             <div class="summary-item">
               <div class="summary-label">Academic year</div>
-              <div class="summary-value">2025-2026</div>
+              <div class="summary-value">{{ academicYearLabel }}</div>
             </div>
             <div class="summary-item">
               <div class="summary-label">Semester</div>
-              <div class="summary-value">1st Semester</div>
+              <div class="summary-value">{{ semesterLabel }}</div>
             </div>
           </div>
         </div>
@@ -36,6 +36,7 @@
         </div>
 
         <q-btn-toggle
+          v-if="!isMobile"
           v-model="currentView"
           unelevated
           no-caps
@@ -52,7 +53,7 @@
 
       <q-separator />
 
-      <q-card-section v-if="currentView === 'table'" class="table-section">
+      <q-card-section v-if="currentView === 'table' && !isMobile" class="table-section">
         <q-table
           :rows="courses"
           :columns="columns"
@@ -83,7 +84,7 @@
                 :outline="props.row.status === 'Evaluated'"
                 :color="props.row.status === 'Evaluated' ? 'secondary' : 'primary'"
                 no-caps
-                @click="evaluateCourse(props.row)"
+                :to="{ name: 'studentCourseEvaluation', params: { course_code: props.row.subjectCode } }"
               >
                 {{ props.row.status === 'Evaluated' ? 'View submission' : 'Evaluate' }}
               </q-btn>
@@ -116,13 +117,25 @@
               <q-card-section class="text-caption text-grey-7">
                 <div class="row q-col-gutter-sm">
                   <div class="col-6">
-                    <div class="section-label">Instructor</div>
-                    <div>{{ course.instructor }}</div>
+                    <div class="section-label">Section</div>
+                    <div>{{ course.section }}</div>
                   </div>
                   <div class="col-6">
-                    <div class="section-label">Units</div>
-                    <div>{{ course.units }}</div>
+                    <div class="section-label">Faculty</div>
+                    <div>{{ course.facultyName }}</div>
                   </div>
+                </div>
+
+                <div v-if="course.schedule && course.schedule.length" class="q-mt-sm">
+                  <div class="section-label">Schedule</div>
+                  <div v-for="(entry, index) in getScheduleEntries(course)" :key="`${course.subjectCode}-schedule-${index}`" class="schedule-item">
+                    {{ entry }}
+                  </div>
+                </div>
+
+                <div v-else class="q-mt-sm">
+                  <div class="section-label">Schedule</div>
+                  <div>Schedule unavailable</div>
                 </div>
               </q-card-section>
 
@@ -138,20 +151,26 @@
                   {{ course.status === 'Evaluated' ? 'View submission' : 'Evaluate' }}
                 </q-btn>
               </q-card-actions>
-            </q-card>
+              </q-card>
+            </div>
           </div>
-        </div>
       </q-card-section>
     </q-card>
   </q-page>
 </template>
 
 <script>
+import { useCookies } from 'vue3-cookies'
+import api from 'src/API/api.js'
+
 export default {
   name: 'StudentEnrolledCourses',
 
-  data() {
+  data () {
+    const { cookies } = useCookies()
+
     return {
+      cookies,
       currentView: 'table',
       columns: [
         { name: 'subjectCode', label: 'Subject Code', field: 'subjectCode', align: 'left', sortable: true },
@@ -159,65 +178,162 @@ export default {
         { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
         { name: 'action', label: 'Action', field: 'action', align: 'right' }
       ],
-      courses: [
-        {
-          subjectCode: 'CS 101',
-          subjectName: 'Introduction to Computing',
-          status: 'Evaluated',
-          instructor: 'Prof. L. Santos',
-          units: '3 units'
-        },
-        {
-          subjectCode: 'CS 102',
-          subjectName: 'Programming Fundamentals',
-          status: 'Not Evaluated',
-          instructor: 'Prof. M. Flores',
-          units: '4 units'
-        },
-        {
-          subjectCode: 'MTH 101',
-          subjectName: 'Calculus I',
-          status: 'Not Evaluated',
-          instructor: 'Dr. R. Bautista',
-          units: '3 units'
-        },
-        {
-          subjectCode: 'ENG 101',
-          subjectName: 'English Communication',
-          status: 'Evaluated',
-          instructor: 'Ms. C. Valencia',
-          units: '3 units'
-        },
-        {
-          subjectCode: 'PSY 101',
-          subjectName: 'General Psychology',
-          status: 'Not Evaluated',
-          instructor: 'Dr. A. Gomez',
-          units: '3 units'
-        },
-        {
-          subjectCode: 'PHYS 101',
-          subjectName: 'College Physics',
-          status: 'Not Evaluated',
-          instructor: 'Prof. D. Reyes',
-          units: '4 units'
-        }
-      ]
+      student: {},
+      courses: []
     }
   },
 
+  computed: {
+    isMobile () {
+      return this.$q?.screen?.lt?.md || false
+    },
+
+    studentDisplayName () {
+      return this.student.fullname || [this.student.firstName, this.student.middleName, this.student.lastName].filter(Boolean).join(' ')
+    },
+
+    initials () {
+      const value = this.studentDisplayName || 'ST'
+      return value
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part.charAt(0).toUpperCase())
+        .join('') || 'ST'
+    },
+
+    studentIdentifier () {
+      return this.student.studentNumber || 'Student ID unavailable'
+    },
+
+    studentProgram () {
+      return this.student.courseName || 'Program unavailable'
+    },
+
+    academicYearLabel () {
+      return this.student.academicYear || 'Academic year unavailable'
+    },
+
+    semesterLabel () {
+      const termCode = this.student.termCode
+
+      if (termCode === 21 || termCode === '21') return '1st Semester'
+      if (termCode === 22 || termCode === '22') return '2nd Semester'
+      if (termCode === 23 || termCode === '23') return 'Summer'
+
+      return 'Unknown semester'
+    }
+  },
+
+  mounted () {
+    this.loadStudentProfile()
+
+    this.$watch(
+      () => this.$q?.screen?.lt?.md,
+      (isMobile) => {
+        this.syncViewMode(isMobile)
+      },
+      { immediate: true }
+    )
+
+    this.fetchEnrolledCourses()
+  },
+
   methods: {
-    evaluateCourse(course) {
-      const actionText = course.status === 'Evaluated' ? 'view submission' : 'start evaluation';
+    syncViewMode (isMobile = this.isMobile) {
+      if (isMobile) {
+        this.currentView = 'card'
+        return
+      }
+
+      this.currentView = 'table'
+    },
+    loadStudentProfile () {
+      const rawStudent = this.cookies?.get?.('_UID_')
+
+      if (!rawStudent) {
+        this.student = {}
+        return
+      }
+
+      try {
+        const parsedStudent = typeof rawStudent === 'string' ? JSON.parse(rawStudent) : rawStudent
+        this.student = parsedStudent || {}
+      } catch (error) {
+        console.warn('Failed to parse student cookie data', error)
+        this.student = {}
+      }
+    },
+
+    getScheduleEntries (course) {
+      const schedule = Array.isArray(course?.schedule) ? course.schedule : []
+
+      if (!schedule.length) {
+        return ['Schedule unavailable']
+      }
+
+      return schedule.map((slot) => {
+        const days = Array.isArray(slot?.days)
+          ? slot.days.join(', ')
+          : (slot?.days || 'Schedule')
+
+        const time = slot?.time || slot?.times || ''
+
+        return time ? `${days} • ${time}` : days
+      })
+    },
+
+    normalizeCourse (course) {
+      const source = course?.course || course || {}
+      const schedule = Array.isArray(source.schedule) ? source.schedule : []
+
+      return {
+        enrollmentId: source.enrollmentId || source.enrollment_id || null,
+        section: source.section || source.section_name || source.sectionName || 'N/A',
+        subjectCode: source.subjectCode || source.course_code || source.subject_code || source.courseCode || 'N/A',
+        subjectName: source.subjectName || source.course_title || source.subject_name || source.courseTitle || source.course_name || 'Untitled course',
+        status: source.status || course?.status || 'Not Evaluated',
+        facultyName: source.facultyName || source.faculty_name || source.instructor || 'TBA',
+        units: source.units || source.unit || source.credit_units || 'TBA',
+        schedule
+      }
+    },
+
+    async fetchEnrolledCourses () {
+      const enrollmentId = this.student?.enrollmentid || this.$route.query.enrollment_id
+
+      if (!enrollmentId) {
+        this.courses = []
+        return
+      }
+
+      try {
+        const response = await api.getEnrolledCoursesByEnrollmentId(enrollmentId)
+        const data = response?.data || response?.result || []
+
+        if (!Array.isArray(data) || !data.length) {
+          this.courses = []
+          return
+        }
+
+        this.courses = data.map(item => this.normalizeCourse(item))
+      } catch (error) {
+        console.error('Failed to load enrolled courses', error)
+        this.courses = []
+      }
+    },
+
+    evaluateCourse (course) {
+      const actionText = course.status === 'Evaluated' ? 'view submission' : 'start evaluation'
 
       this.$q.notify({
         type: 'info',
         message: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} for ${course.subjectCode}`,
         position: 'top-right'
-      });
+      })
     }
   }
-};
+}
 </script>
 
 <style scoped>
@@ -318,6 +434,14 @@ export default {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 6px;
+}
+
+.schedule-item {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  line-height: 1.5;
 }
 
 @media (max-width: 600px) {

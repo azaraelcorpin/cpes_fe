@@ -31,8 +31,8 @@
               unelevated
               color="primary"
               icon="assignment"
-              label="Student Course Evaluation"
-              :to="{ name: 'studentCourseEvaluation', params: { id: evaluation._id } }"
+              label="View Evaluation Form"
+              :to="{ name: 'studentCourseEvaluationForm', params: { id: evaluation._id } }"
             />
             <q-badge rounded :color="getStatusColor(evaluation.status)" class="q-px-md q-py-xs text-weight-bold">
               {{ evaluation.status }}

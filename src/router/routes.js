@@ -44,7 +44,7 @@ const routes = [
                 component: () => import('pages/course_eval/ManageCourseEvaluations.vue'),
                 meta: {
                   title: 'Course Evaluations',
-                  roles: ['CHAIRPERSON', 'DEAN', 'ADMIN']
+                  roles: ['COORDINATOR','CHAIRPERSON', 'DEAN', 'admin']
                 },
                 icon: 'assignment',
                 visible: true,
@@ -63,9 +63,21 @@ const routes = [
                 visible: false, // Set to false so it does not show up as a raw link in your main sidebar menu
               },
 
-              // 3. Student Course Evaluation Page
+              // 3. Student Course Evaluation FORM Page
               {
                 path: '/manage-evaluations/:id/student-course-evaluation',
+                name: 'studentCourseEvaluationForm',
+                component: () => import('pages/course_eval/StudentCourseEvaluation.vue'),
+                meta: {
+                  title: 'Student Course Evaluation',
+                  roles: []
+                },
+                icon: 'assignment',
+                visible: false,
+              },
+              // 4. Student Course Evaluation Page
+              {
+                path: '/manage-evaluations/:course_code/student-course-evaluation',
                 name: 'studentCourseEvaluation',
                 component: () => import('pages/course_eval/StudentCourseEvaluation.vue'),
                 meta: {

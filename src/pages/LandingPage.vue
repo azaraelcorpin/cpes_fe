@@ -118,11 +118,16 @@ export default{
             loading.value=true;
             const userData = decodeCredential(response.credential)
             let SID = {};
-            // SID.email = userData.email;
-            SID.email = 'norjanah.alaiden@msugensan.edu.ph';
+            SID.email = userData.email;
             SID.name = userData.name;
             SID.picture = userData.picture;
             SID.role = role.value;
+
+            //if student, as for developing purposes, set sample email to test student role
+            if(role.value === 'student')
+              SID.email = 'denierich.falalimpa@msugensan.edu.ph';
+            //////
+
             console.log(!SID.email.includes('@msugensan.edu.ph'))
             if(!SID.email.includes('@msugensan.edu.ph'))
               {
