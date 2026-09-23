@@ -32,7 +32,7 @@ const routes = [
     name: 'manageEvaluations',
     meta: {
       title: 'Evaluation Management',
-      roles: []
+      roles: ['COORDINATOR','CHAIRPERSON', 'DEAN', 'admin']
     },
     icon: 'assignment',
     visible: true,

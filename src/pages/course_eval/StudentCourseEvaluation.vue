@@ -52,7 +52,6 @@
 							<h2 class="text-subtitle1 text-weight-bold q-my-none text-grey-9">
 								{{ indicator.indicator_name }}
 							</h2>
-							<div class="text-caption text-grey-6">{{ indicator.assigned_role }}</div>
 						</div>
 					</div>
 
@@ -115,6 +114,8 @@
 
 <script>
 import api from 'src/API/api.js'
+import { useCookies } from 'vue3-cookies'
+import myDialog from 'src/plugins/myDialog.js'
 
 const samplePayload = {
 	data: [
@@ -164,7 +165,9 @@ export default {
 	emits: ['submit'],
 
 	data () {
+		const { cookies } = useCookies()
 		return {
+			cookies,
 			evaluationData: null,
 			loading: false,
 			answers: {},
@@ -285,11 +288,46 @@ export default {
 			return this.answers[itemId] !== undefined && this.answers[itemId] !== null
 		},
 
-		submitEvaluation () {
+		async submitEvaluation () {
 			if (!this.isComplete) return
 
-			const payload = this.submissionPayload
-			this.$emit('submit', payload)
+			const rawUser = this.cookies?.get?.('_UID_') || this.cookie?.get?.('_UID_')
+			const user = typeof rawUser === 'string' ? JSON.parse(rawUser) : rawUser || {}
+			console.log('Submitting evaluation for user:', user)
+			const userEmail = user?.email || ''
+			const evaluationId = this.evaluationData?._id || null
+
+			if (!evaluationId) {
+				this.notifyError('Evaluation ID is missing. Cannot submit evaluation.')
+				return
+			}
+			if (!userEmail) {
+				this.notifyError('User email is missing. Cannot submit evaluation.')
+				return
+			}
+
+			const payload = {
+				evaluation_id: evaluationId,
+				email: userEmail,
+				response_item: this.submissionPayload
+			}
+			// ask for confirmation before submission. Once submitted, the evaluation cannot be edited.
+			let confirm = await myDialog.confirm(this.$q, 'Confirm Submission', 'Are you sure you want to submit this evaluation? Once submitted, it cannot be edited.')
+			if (!confirm) return
+
+			try {
+				const response = await api.postResponseWithItems(payload)
+
+				if (!response.success) {
+					throw new Error(response?.error?.response?.data?.message || 'Failed to submit evaluation.')
+				}
+
+				// route to the student enrolled courses page after successful submission
+				this.$router.push({ name: 'studentEnrolledCourses' })
+			} catch (error) {
+				this.notifyError(error.message || 'An error occurred while submitting the evaluation.')
+				return
+			}
 
 			if (this.$q) {
 				this.$q.notify({
