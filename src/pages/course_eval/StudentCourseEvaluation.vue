@@ -360,6 +360,16 @@ export default {
 	line-height: 1.3;
 }
 
+.captcha-card {
+	border-radius: 10px;
+	background: #f8fbff;
+}
+
+.captcha-widget {
+	display: flex;
+	justify-content: flex-start;
+}
+
 @media (max-width: 599px) {
 	.evaluation-header {
 		top: 0;

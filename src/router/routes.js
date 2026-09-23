@@ -77,7 +77,7 @@ const routes = [
               },
               // 4. Student Course Evaluation Page
               {
-                path: '/manage-evaluations/:course_code/student-course-evaluation',
+                path: '/manage-evaluations/student-course-evaluation/:course_code',
                 name: 'studentCourseEvaluation',
                 component: () => import('pages/course_eval/StudentCourseEvaluation.vue'),
                 meta: {

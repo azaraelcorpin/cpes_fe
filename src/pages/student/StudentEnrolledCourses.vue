@@ -73,6 +73,14 @@
               >
                 {{ props.row.status }}
               </q-badge>
+              <q-badge v-if="props.row.formStatus !== 'ACTIVE'"
+                rounded
+                :color="'grey-5'"
+                text-color="white"
+                class="q-px-sm q-py-xs text-weight-bold"
+              >
+                {{ props.row.formStatus }} FORM
+              </q-badge>              
             </q-td>
           </template>
 
@@ -80,6 +88,7 @@
             <q-td :props="props">
               <q-btn
                 dense
+                :disable="props.row.formStatus !== 'ACTIVE'"
                 :unelevated="props.row.status !== 'Evaluated'"
                 :outline="props.row.status === 'Evaluated'"
                 :color="props.row.status === 'Evaluated' ? 'secondary' : 'primary'"
@@ -102,14 +111,26 @@
                   <div class="text-overline text-grey-6">{{ course.subjectCode }}</div>
                   <div class="text-subtitle1 text-weight-bold text-grey-9">{{ course.subjectName }}</div>
                 </div>
-                <q-badge
-                  rounded
-                  :color="course.status === 'Evaluated' ? 'positive' : 'grey-5'"
-                  text-color="white"
-                  class="q-px-sm q-py-xs text-weight-bold"
-                >
-                  {{ course.status }}
-                </q-badge>
+                <div class="column items-end q-gutter-xs">
+                  <q-badge
+                    rounded
+                    :color="course.status === 'Evaluated' ? 'positive' : 'grey-5'"
+                    text-color="white"
+                    class="q-px-sm q-py-xs text-weight-bold"
+                  >
+                    {{ course.status }}
+                  </q-badge>
+
+                  <q-badge
+                    v-if="course.formStatus !== 'ACTIVE'"
+                    rounded
+                    :color="'grey-5'"
+                    text-color="white"
+                    class="q-px-sm q-py-xs text-weight-bold"
+                  >
+                    {{ course.formStatus }} FORM
+                  </q-badge>
+                </div>
               </q-card-section>
 
               <q-separator />
@@ -141,6 +162,8 @@
 
               <q-card-actions align="right" class="q-px-md q-pb-md">
                 <q-btn
+                  :disable="course.formStatus !== 'ACTIVE'"
+                  :to="{ name: 'studentCourseEvaluation', params: { course_code: course.subjectCode } }"
                   :outline="course.status === 'Evaluated'"
                   :unelevated="course.status !== 'Evaluated'"
                   dense
@@ -193,13 +216,16 @@ export default {
     },
 
     initials () {
-      const value = this.studentDisplayName || 'ST'
-      return value
-        .split(' ')
-        .filter(Boolean)
-        .slice(0, 2)
-        .map(part => part.charAt(0).toUpperCase())
-        .join('') || 'ST'
+      // const value = this.studentDisplayName || 'ST'
+      // return value
+      //   .split(' ')
+      //   .filter(Boolean)
+      //   .slice(0, 2)
+      //   .map(part => part.charAt(0).toUpperCase())
+      //   .join('') || 'ST'
+      return this.student.firstName && this.student.lastName
+        ? `${this.student.firstName.charAt(0).toUpperCase()}${this.student.lastName.charAt(0).toUpperCase()}`
+        : 'ST'
     },
 
     studentIdentifier () {
@@ -295,6 +321,7 @@ export default {
         status: source.status || course?.status || 'Not Evaluated',
         facultyName: source.facultyName || source.faculty_name || source.instructor || 'TBA',
         units: source.units || source.unit || source.credit_units || 'TBA',
+        formStatus: source.formStatus || source.form_status || 'ACTIVE',
         schedule
       }
     },
