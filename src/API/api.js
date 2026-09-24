@@ -359,6 +359,26 @@ export default {
       }
     },
 
+    //get rating scale profile by id
+    async getRatingScaleProfileById(id) {
+      var path = '/api/cpes-setting/rating-scales/getById'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { _id: id }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else{
+          console.log('getRatingScaleProfileById Error');
+          return {error:response}
+        }
+      } catch (error) {
+        console.log('error',error.message);
+        return { error:error }
+      }
+    },
+
     //#endregion Users and Rating Scales API
 
     //#region Evaluation Settings API
@@ -756,6 +776,50 @@ export default {
       } catch (error) {
         console.log('error', error.message);
         return { error: error }
+      }
+    },
+
+    //getResponseWithItems
+    async getResponseWithItems(evaluationId){
+      var path = '/api/course-evaluation/responses/getResponseWithItemsByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getResponseWithItems Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //getResponseStatistics
+    async getResponseStatistics(evaluationId){
+      var path = '/api/course-evaluation/responses/getResponseStatistics'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getResponseStatistics Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
       }
     },
 

@@ -103,6 +103,17 @@ const routes = [
     icon:'school',
     visible:true,
   },
+  {
+    path: '/student/submitted-evaluation/:id?',
+    name:'studentSubmittedEvaluation',
+    component: () => import('pages/student/StudentSubmittedEvaluation.vue'),
+    meta:{
+      title:'Submitted Evaluation',
+      roles:[]
+    },
+    icon:'assignment_turned_in',
+    visible:false,
+  },
 
   ///SysAdmin
   {

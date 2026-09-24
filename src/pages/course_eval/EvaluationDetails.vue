@@ -87,7 +87,7 @@
                     <div class="row items-center q-gutter-none q-mt-none text-caption text-grey-6">
                       <span class="text-weight-medium">{{ indicator.assigned_role || 'Unassigned' }}</span>
                       <span class="q-ml-xs">
-                        {{ indicator.items?.length || 0 }} item{{ (indicator.items?.length || 0) === 1 ? '' : 's' }}
+                        {{ indicator.evaluation_items?.length || 0 }} item{{ (indicator.evaluation_items?.length || 0) === 1 ? '' : 's' }}
                       </span>
                     </div>
                   </div>
@@ -104,7 +104,7 @@
                   </q-btn>
                 </q-card-section>
                 <q-list separator>
-                  <q-item v-for="(item, itemIndex) in indicator.items" :key="item._id" class="evaluation-item">
+                  <q-item v-for="(item, itemIndex) in indicator.evaluation_items" :key="item._id" class="evaluation-item">
                     <q-item-section avatar>
                       <q-avatar color="grey-2" text-color="grey-8" size="28px">{{ item.sort_order || itemIndex + 1 }}</q-avatar>
                     </q-item-section>
@@ -122,7 +122,7 @@
                       </div>
                     </q-item-section>
                   </q-item>
-                  <q-item v-if="!indicator.items || !indicator.items.length" class="empty-items">
+                  <q-item v-if="!indicator.evaluation_items || !indicator.evaluation_items.length" class="empty-items">
                     <q-item-section avatar><q-icon name="playlist_add" color="grey-5" /></q-item-section>
                     <q-item-section class="text-caption text-grey-6">No evaluation items configured.</q-item-section>
                   </q-item>
@@ -134,13 +134,62 @@
         </q-tab-panel>
 
         <q-tab-panel name="summary" class="q-pa-none">
+          <q-card flat bordered class="bg-white q-mb-md">
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold">Rating Scale Legend</div>
+              <div class="text-caption text-grey-6 q-mb-sm">Interpretation guide used in the summary report.</div>
+
+              <div class="row q-col-gutter-sm">
+                <div v-for="scale in ratingScaleLegend" :key="scale._id || scale.id || scale.range" class="col-12 col-sm-6 col-md-3">
+                  <q-card flat bordered class="bg-grey-1">
+                    <q-card-section class="q-pa-sm">
+                      <div class="text-caption text-grey-7">{{ scale.range }}</div>
+                      <div class="text-weight-bold text-primary">{{ scale.label }}</div>
+                      <div class="text-caption text-grey-7">{{ scale.interpretation }}</div>
+                    </q-card-section>
+                  </q-card>
+                </div>
+              </div>
+
+              <div v-if="!ratingScaleLegend.length" class="text-caption text-grey-6 q-mt-sm">
+                No rating scale legend available for this evaluation.
+              </div>
+            </q-card-section>
+          </q-card>
+
           <q-card flat bordered class="bg-white">
-            <q-card-section><div class="text-subtitle1 text-weight-bold">Response Summary</div><div class="text-caption text-grey-6">Mean, median, and mode by indicator.</div></q-card-section>
-            <q-markup-table flat separator="horizontal">
-              <thead><tr><th class="text-left">Indicator</th><th class="text-right">Mean</th><th class="text-right">Median</th><th class="text-right">Mode</th><th class="text-right">Responses</th></tr></thead>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold">Subjective Course Evaluation Summary Report</div>
+              <div class="text-caption text-grey-6">Mean, description, and interpretation by indicator.</div>
+            </q-card-section>
+
+            <q-markup-table flat separator="cell" class="summary-report-table">
+              <thead>
+                <tr>
+                  <th class="text-left">Indicators</th>
+                  <th class="text-right">Mean</th>
+                  <th class="text-right">Description</th>
+                  <th class="text-right">Interpretation</th>
+                </tr>
+              </thead>
               <tbody>
-                <tr v-for="stat in responseStats" :key="stat._id"><td>{{ stat.indicator_name }}</td><td class="text-right">{{ stat.mean ?? stat.current_average ?? '—' }}</td><td class="text-right">{{ stat.median ?? '—' }}</td><td class="text-right">{{ stat.mode ?? '—' }}</td><td class="text-right">{{ stat.total_respondents ?? 0 }}</td></tr>
-                <tr v-if="!responseStats.length"><td colspan="5" class="text-center text-grey-6">No response summary available.</td></tr>
+                <template v-for="(row, index) in summaryDisplayRows" :key="`${row.indicatorKey || 'indicator'}-${row.itemKey || 'row'}-${index}`">
+                  <tr v-if="row.isHeader" class="summary-header-row">
+                    <td colspan="4" class="text-left text-weight-bold">
+                      {{ row.label }}
+                    </td>
+                  </tr>
+                  <tr v-else>
+                    <td class="text-left summary-item-name">{{ row.label }}</td>
+                    <td class="text-right summary-metric">{{ formatSummaryMean(row.mean) }}</td>
+                    <td class="text-right summary-description">{{ row.description }}</td>
+                    <td class="text-right summary-interpretation">{{ row.interpretation }}</td>
+                  </tr>
+                </template>
+
+                <tr v-if="!summaryDisplayRows.length">
+                  <td colspan="4" class="text-center text-grey-6">No response summary available.</td>
+                </tr>
               </tbody>
             </q-markup-table>
           </q-card>
@@ -267,6 +316,7 @@ export default {
       // Dynamic Component Data Pools
       actionReports: [],
       responseStats: [],
+      ratingScaleProfile: null,
 
       // Modal Forms Interaction Tracker State
       dialog: {
@@ -296,7 +346,7 @@ export default {
         name: '',
         sort_order: 1,
         assigned_role: 'COORDINATOR',
-        items: []
+        evaluation_items: []
       },
 
       formItem: {
@@ -321,7 +371,7 @@ export default {
 
     totalEvaluationItems () {
       return (this.evaluation?.indicators || []).reduce(
-        (total, indicator) => total + (indicator.items?.length || 0),
+        (total, indicator) => total + (indicator.evaluation_items?.length || 0),
         0
       );
     },
@@ -352,6 +402,122 @@ export default {
 
     canAssignMembers () {
       return this.isDraft && (this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN'));
+    },
+
+    ratingScaleLegend () {
+      const items = this.ratingScaleProfile?.items || this.ratingScaleProfile?.scale_items || [];
+
+      return [...items]
+        .map((item) => {
+          const min = Number(item.min_value ?? item.minValue ?? 0);
+          const max = Number(item.max_value ?? item.maxValue ?? 0);
+
+          return {
+            ...item,
+            min,
+            max,
+            range: min === max ? Number(min).toFixed(2) : `${Number(min).toFixed(2)}–${Number(max).toFixed(2)}`,
+            label: item.description || item.label || `${Number(min).toFixed(2)}–${Number(max).toFixed(2)}`,
+            interpretation: item.interpretation || item.meaning || 'N/A'
+          };
+        })
+        .sort((first, second) => (first.min ?? 0) - (second.min ?? 0));
+    },
+
+    summaryDisplayRows () {
+      const rows = [];
+
+      const buildMeanDescription = (value) => {
+        const numeric = Number(value);
+        const safeValue = Number.isFinite(numeric) ? numeric : 0;
+
+        if (safeValue >= 3.5) return { description: 'Strongly Agree', interpretation: 'Very Satisfied' };
+        if (safeValue >= 2.5) return { description: 'Agree', interpretation: 'Satisfied' };
+        if (safeValue >= 1.5) return { description: 'Disagree', interpretation: 'Dissatisfied' };
+        return { description: 'Strongly Disagree', interpretation: 'Very Dissatisfied' };
+      };
+
+      const getIndicatorAverage = (indicator) => {
+        const items = Array.isArray(indicator?.evaluation_items) ? indicator.evaluation_items : [];
+        if (!items.length) return 0;
+
+        const total = items.reduce((sum, item) => sum + Number(item.mean ?? item.rating ?? item.value ?? 0), 0);
+        return items.length ? total / items.length : 0;
+      };
+
+      const sourceStats = Array.isArray(this.responseStats) && this.responseStats.length
+        ? this.responseStats
+        : this.evaluation?.indicators || [];
+
+      sourceStats.forEach((stat, statIndex) => {
+        const indicatorName = stat.indicator_name || stat.name || stat.label || 'Indicator';
+        const indicatorKey = stat._id || stat.indicator_id || `${indicatorName}-${statIndex}`;
+
+        const indicatorAverage = stat.mean ?? stat.current_average ?? stat.average ?? getIndicatorAverage(stat);
+        const averageMeta = buildMeanDescription(indicatorAverage);
+
+        rows.push({
+          isHeader: true,
+          label: `${this.getIndicatorPrefix(statIndex + 1)} ${indicatorName}`,
+          indicatorKey,
+          mean: indicatorAverage,
+          description: averageMeta.description,
+          interpretation: averageMeta.interpretation
+        });
+
+        const items = Array.isArray(stat.evaluation_items) && stat.evaluation_items.length
+          ? stat.evaluation_items
+          : (Array.isArray(this.evaluation?.indicators?.[statIndex]?.evaluation_items)
+            ? this.evaluation.indicators[statIndex].evaluation_items
+            : []);
+
+        if (items.length) {
+          items.forEach((item, itemIndex) => {
+            const itemMean = Number(item.mean ?? item.rating ?? item.value ?? item.score ?? 0);
+            const itemMeta = buildMeanDescription(itemMean);
+
+            rows.push({
+              isHeader: false,
+              label: item.name || item.item_name || item.label || `Item ${itemIndex + 1}`,
+              mean: itemMean,
+              description: itemMeta.description,
+              interpretation: itemMeta.interpretation,
+              itemKey: item._id || item.item_id || `${indicatorKey}-${itemIndex}`
+            });
+          });
+        }
+
+        rows.push({
+          isHeader: false,
+          label: 'Average',
+          mean: Number(indicatorAverage),
+          description: averageMeta.description,
+          interpretation: averageMeta.interpretation,
+          itemKey: `${indicatorKey}-average`
+        });
+      });
+
+      if (rows.length) {
+        const indicatorAverages = rows
+          .filter(row => !row.isHeader && row.label !== 'Average' && Number.isFinite(Number(row.mean)))
+          .map(row => Number(row.mean));
+
+        const totalAverage = indicatorAverages.length
+          ? indicatorAverages.reduce((sum, value) => sum + value, 0) / indicatorAverages.length
+          : 0;
+        const totalAverageMeta = buildMeanDescription(totalAverage);
+
+        rows.push({
+          isHeader: false,
+          label: 'Total Average',
+          mean: Number(totalAverage),
+          description: totalAverageMeta.description,
+          interpretation: totalAverageMeta.interpretation,
+          itemKey: 'total-average'
+        });
+      }
+
+      return rows;
     },
 
     selectedFaculty () {
@@ -535,8 +701,8 @@ export default {
 
         this.evaluation = this.normalizeEvaluationDetails(details);
         this.actionReports = details.actionReports || details.action_reports || [];
-        this.responseStats = details.responseStats || details.response_stats || [];
-        this.fetchEvaluationMembers(targetId);
+        this.getResponseStats();
+        this.fetchEvaluationMembers();
       } catch (error) {
         this.evaluation = null;
         this.$q.notify({
@@ -548,6 +714,56 @@ export default {
       }
     },
 
+    async getResponseStats () {
+      const targetId = this.$route.params.id;
+
+      if (!targetId) {
+        throw new Error('Evaluation id is required.');
+      }
+
+      try {
+        const response = await api.getResponseStatistics(targetId);
+
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluation response statistics.');
+        }
+
+        const ratingScaleResp = await api.getRatingScaleProfileById(this.evaluation.rating_scale_id);
+        if (!ratingScaleResp || ratingScaleResp.error || !ratingScaleResp.success) {
+          throw new Error(ratingScaleResp?.error?.response?.data?.message || 'Unable to load rating scale details.');
+        }
+        this.ratingScaleProfile = ratingScaleResp.data || null;
+        const ratingScaleDetails = ratingScaleResp.data;
+
+        let responseStatistics = Array.isArray(response.data) ? response.data : [];
+        //loop the evaluation indicators and match the response statistics by evalution_item_id inside the indicator items
+        for (const indicator of this.evaluation.indicators) {
+          for (const evaluation_item of indicator.evaluation_items) {
+            const itemKey = evaluation_item.item_id;
+            const matchingStat = responseStatistics.find(stat => String(stat.evaluation_item_id) === String(itemKey));
+            if (matchingStat) {
+              evaluation_item._id = evaluation_item._id || matchingStat.evaluation_item_id || evaluation_item.item_id;
+              evaluation_item.mean = matchingStat.average_rating;
+              evaluation_item.total_responses = matchingStat.total_responses;
+              //get the description and interpretation from the rating scale details (in between the min and max values of the rating scale)
+              const ratingScaleItem = ratingScaleDetails.items.find(item => matchingStat.average_rating >= item.min_value && matchingStat.average_rating <= item.max_value);
+              if (ratingScaleItem) {
+                evaluation_item.description = ratingScaleItem.description;
+                evaluation_item.interpretation = ratingScaleItem.interpretation;
+              }
+            }
+          }
+        }
+        console.log('evaluation', this.evaluation)
+      } catch (error) {
+        this.responseStats = [];
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load evaluation response statistics.'
+        });
+      }
+    },
+
     normalizeEvaluationDetails (details) {
       const indicators = details.indicators || details.evaluation_indicators || [];
       const evaluationItems = details.evaluation_items || details.evaluationItems || [];
@@ -555,7 +771,7 @@ export default {
       return {
         ...details,
         indicators: indicators.map((indicator) => {
-          const indicatorItems = indicator.items || indicator.evaluation_items || indicator.evaluationItems;
+          const indicatorItems = indicator.evaluation_items || indicator.items || indicator.evaluationItems;
           const items = indicatorItems?.length ? indicatorItems : evaluationItems.filter((item) => {
             const itemIndicatorId = item.indicator_id || item.indicatorId;
             return String(itemIndicatorId) === String(indicator._id || indicator.id);
@@ -563,14 +779,28 @@ export default {
 
           return {
             ...indicator,
-            items: Array.isArray(items) ? items.map((item, index) => ({
+            evaluation_items: Array.isArray(items) ? items.map((item, index) => ({
               ...item,
+              _id: item._id || item.id || item.item_id || `${indicator._id || indicator.id || 'indicator'}-${index + 1}`,
+              item_id: item.item_id || item.id || item._id || null,
               sort_order: item.sort_order || item.sortOrder || index + 1,
               name: item.name || item.item_name || item.itemName || item.question || 'Unnamed evaluation item'
             })) : []
           };
         })
       };
+    },
+
+    getIndicatorPrefix (index) {
+      const prefixes = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+      return prefixes[(index - 1)] || ` ${index}.`;
+    },
+
+    formatSummaryMean (value) {
+      if (value === null || value === undefined || value === '') return '—';
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) return value;
+      return numeric.toFixed(2);
     },
 
     getStatusColor (status) {
@@ -708,7 +938,7 @@ export default {
         _id: null,
         indicator_id: parentIndicator._id || parentIndicator.id || parentIndicator.indicator_id,
         name: '',
-        sort_order: (parentIndicator.items?.length || 0) + 1
+        sort_order: (parentIndicator.evaluation_items?.length || 0) + 1
       };
 
       this.dialog = {
@@ -743,7 +973,7 @@ export default {
         return;
       }
 
-      const item = parentIndicator.items[index];
+      const item = parentIndicator.evaluation_items[index];
       const confirmed = await this.confirmItemAction('Are you sure you want to delete this evaluation item?');
       if (!confirmed) return;
 
@@ -755,7 +985,7 @@ export default {
           throw new Error(response?.error?.response?.data?.message || 'Failed to delete evaluation item.');
         }
 
-        parentIndicator.items.splice(index, 1);
+        parentIndicator.evaluation_items.splice(index, 1);
         this.$q.notify({ type: 'positive', message: 'Evaluation item deleted.' });
       } catch (error) {
         this.$q.notify({
@@ -808,7 +1038,7 @@ export default {
 
     async processItemMutation () {
       const targetedIndicator = this.dialog.targetRef;
-      const items = targetedIndicator.items || [];
+      const items = targetedIndicator.evaluation_items || [];
       const itemName = String(this.formItem.name || '').trim().toLowerCase();
       const itemSortOrder = Number(this.formItem.sort_order);
       const duplicateItem = items.some((item, index) => {
@@ -827,7 +1057,7 @@ export default {
       }
 
       this.formItem.name = String(this.formItem.name || '').trim();
-      targetedIndicator.items = items;
+      targetedIndicator.evaluation_items = items;
 
       const indicatorId = this.formItem.indicator_id ||
         targetedIndicator._id ||
@@ -879,9 +1109,9 @@ export default {
         const savedItem = { ...payload, ...returnedItem };
 
         if (isEditing) {
-          targetedIndicator.items.splice(this.dialog.index, 1, savedItem);
+          targetedIndicator.evaluation_items.splice(this.dialog.index, 1, savedItem);
         } else {
-          targetedIndicator.items.push(savedItem);
+          targetedIndicator.evaluation_items.push(savedItem);
         }
 
         this.sortEvaluationItems(targetedIndicator);
@@ -903,7 +1133,7 @@ export default {
     },
 
     sortEvaluationItems (indicator) {
-      indicator.items.sort((firstItem, secondItem) => {
+      indicator.evaluation_items.sort((firstItem, secondItem) => {
         const firstOrder = Number(firstItem.sort_order);
         const secondOrder = Number(secondItem.sort_order);
 
@@ -919,6 +1149,98 @@ export default {
 </script>
 
 <style scoped>
+.summary-report-table {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.summary-report-table thead th {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .summary-report-table {
+    display: block;
+    overflow-x: hidden;
+  }
+
+  .summary-report-table thead {
+    display: none;
+  }
+
+  .summary-report-table tbody,
+  .summary-report-table tr,
+  .summary-report-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .summary-report-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .summary-report-table tr {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+    padding: 10px 12px;
+  }
+
+  .summary-report-table td {
+    border: none !important;
+    padding: 6px 0;
+    text-align: left !important;
+  }
+
+  .summary-report-table .summary-item-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    padding-bottom: 8px;
+  }
+
+  .summary-report-table .summary-metric,
+  .summary-report-table .summary-description,
+  .summary-report-table .summary-interpretation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .summary-report-table .summary-metric::before {
+    content: 'Mean';
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  .summary-report-table .summary-description::before {
+    content: 'Description';
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  .summary-report-table .summary-interpretation::before {
+    content: 'Interpretation';
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  .details-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .details-summary-stat {
+    align-items: flex-start;
+  }
+  .indicator-header {
+    align-items: flex-start;
+  }
+}
+
 .details-heading {
   min-height: 78px;
 }
@@ -975,18 +1297,5 @@ export default {
 .transition-hover:hover {
   background-color: #f8fafc;
   transition: background-color 0.15s ease-in-out;
-}
-@media (max-width: 600px) {
-  .details-heading {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .details-summary-stat {
-    align-items: flex-start;
-  }
-  .indicator-header {
-    align-items: flex-start;
-  }
 }
 </style>

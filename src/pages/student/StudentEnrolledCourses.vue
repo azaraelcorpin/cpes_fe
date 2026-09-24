@@ -93,7 +93,9 @@
                 :outline="props.row.status === 'Evaluated'"
                 :color="props.row.status === 'Evaluated' ? 'secondary' : 'primary'"
                 no-caps
-                :to="{ name: 'studentCourseEvaluation', params: { course_code: props.row.subjectCode } }"
+                :to="props.row.status === 'Evaluated'
+                  ? { name: 'studentSubmittedEvaluation', params: { id: props.row.evaluationId } }
+                  : { name: 'studentCourseEvaluation', params: { course_code: props.row.subjectCode } }"
               >
                 {{ props.row.status === 'Evaluated' ? 'View submission' : 'Evaluate' }}
               </q-btn>
@@ -163,7 +165,9 @@
               <q-card-actions align="right" class="q-px-md q-pb-md">
                 <q-btn
                   :disable="course.formStatus !== 'ACTIVE'"
-                  :to="{ name: 'studentCourseEvaluation', params: { course_code: course.subjectCode } }"
+                  :to="course.status === 'Evaluated'
+                    ? { name: 'studentSubmittedEvaluation', params: { id: course.evaluationId } }
+                    : { name: 'studentCourseEvaluation', params: { course_code: course.subjectCode } }"
                   :outline="course.status === 'Evaluated'"
                   :unelevated="course.status !== 'Evaluated'"
                   dense
@@ -315,6 +319,7 @@ export default {
 
       return {
         enrollmentId: source.enrollmentId || source.enrollment_id || null,
+        evaluationId: source.evaluationId || source.evaluation_id || source.response_id || source._id || null,
         section: source.section || source.section_name || source.sectionName || 'N/A',
         subjectCode: source.subjectCode || source.course_code || source.subject_code || source.courseCode || 'N/A',
         subjectName: source.subjectName || source.course_title || source.subject_name || source.courseTitle || source.course_name || 'Untitled course',
