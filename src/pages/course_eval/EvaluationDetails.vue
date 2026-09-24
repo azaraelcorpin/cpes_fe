@@ -134,65 +134,99 @@
         </q-tab-panel>
 
         <q-tab-panel name="summary" class="q-pa-none">
-          <q-card flat bordered class="bg-white q-mb-md">
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold">Rating Scale Legend</div>
-              <div class="text-caption text-grey-6 q-mb-sm">Interpretation guide used in the summary report.</div>
+          <div
+            v-if="fetchSummaryStatus.loading"
+            class="q-pa-xl flex column items-center justify-start"
+            style="min-height: 45vh;"
+          >
+            <q-spinner-dots size="3.5em" color="primary" />
+            <div class="text-center text-grey-6 q-mt-md text-weight-medium">
+              Loading summary report...
+            </div>
+          </div>
 
-              <div class="row q-col-gutter-sm">
-                <div v-for="scale in ratingScaleLegend" :key="scale._id || scale.id || scale.range" class="col-12 col-sm-6 col-md-3">
-                  <q-card flat bordered class="bg-grey-1">
-                    <q-card-section class="q-pa-sm">
-                      <div class="text-caption text-grey-7">{{ scale.range }}</div>
-                      <div class="text-weight-bold text-primary">{{ scale.label }}</div>
-                      <div class="text-caption text-grey-7">{{ scale.interpretation }}</div>
-                    </q-card-section>
-                  </q-card>
-                </div>
-              </div>
+          <div v-else-if="fetchSummaryStatus.error" class="q-pt-xl text-negative text-center">
+            {{ fetchSummaryStatus.error }}
+          </div>
 
-              <div v-if="!ratingScaleLegend.length" class="text-caption text-grey-6 q-mt-sm">
-                No rating scale legend available for this evaluation.
-              </div>
-            </q-card-section>
-          </q-card>
+          <template v-else>
+            <div class="summary-panel-shell">
+              <q-card flat bordered class="bg-white q-mb-md summary-sticky-legend">
+                <q-card-section>
+                  <div class="text-subtitle1 text-weight-bold">Rating Scale Legend</div>
+                  <div class="text-caption text-grey-6 q-mb-sm">Interpretation guide used in the summary report.</div>
 
-          <q-card flat bordered class="bg-white">
-            <q-card-section>
-              <div class="text-subtitle1 text-weight-bold">Subjective Course Evaluation Summary Report</div>
-              <div class="text-caption text-grey-6">Mean, description, and interpretation by indicator.</div>
-            </q-card-section>
+                  <div class="row q-col-gutter-sm">
+                    <div v-for="scale in ratingScaleLegend" :key="scale._id || scale.id || scale.range" class="col-12 col-sm-6 col-md-3">
+                      <q-card flat bordered class="bg-grey-1">
+                        <q-card-section class="q-pa-sm">
+                          <div class="text-caption text-grey-7">{{ scale.range }}</div>
+                          <div class="text-weight-bold text-primary">{{ scale.label }}</div>
+                          <div class="text-caption text-grey-7">{{ scale.interpretation }}</div>
+                        </q-card-section>
+                      </q-card>
+                    </div>
+                  </div>
 
-            <q-markup-table flat separator="cell" class="summary-report-table">
-              <thead>
-                <tr>
-                  <th class="text-left">Indicators</th>
-                  <th class="text-right">Mean</th>
-                  <th class="text-right">Description</th>
-                  <th class="text-right">Interpretation</th>
-                </tr>
-              </thead>
-              <tbody>
-                <template v-for="(row, index) in summaryDisplayRows" :key="`${row.indicatorKey || 'indicator'}-${row.itemKey || 'row'}-${index}`">
-                  <tr v-if="row.isHeader" class="summary-header-row">
-                    <td colspan="4" class="text-left text-weight-bold">
-                      {{ row.label }}
-                    </td>
-                  </tr>
-                  <tr v-else>
-                    <td class="text-left summary-item-name">{{ row.label }}</td>
-                    <td class="text-right summary-metric">{{ formatSummaryMean(row.mean) }}</td>
-                    <td class="text-right summary-description">{{ row.description }}</td>
-                    <td class="text-right summary-interpretation">{{ row.interpretation }}</td>
-                  </tr>
-                </template>
+                  <div v-if="!ratingScaleLegend.length" class="text-caption text-grey-6 q-mt-sm">
+                    No rating scale legend available for this evaluation.
+                  </div>
+                </q-card-section>
+              </q-card>
 
-                <tr v-if="!summaryDisplayRows.length">
-                  <td colspan="4" class="text-center text-grey-6">No response summary available.</td>
-                </tr>
-              </tbody>
-            </q-markup-table>
-          </q-card>
+              <q-card flat bordered class="bg-white summary-table-card">
+                <q-card-section class="summary-table-header">
+                  <div class="text-subtitle1 text-weight-bold">Subjective Course Evaluation Summary Report</div>
+                  <div class="text-caption text-grey-6">Mean, description, and interpretation by indicator.</div>
+                </q-card-section>
+
+                <q-markup-table flat separator="cell" class="summary-report-table">
+                  <thead>
+                    <tr>
+                      <th class="text-left">Indicators</th>
+                      <th class="text-right">Mean</th>
+                      <th class="text-right">Description</th>
+                      <th class="text-right">Interpretation</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template v-for="(row, index) in summaryDisplayRows" :key="`${row.indicatorKey || 'indicator'}-${row.itemKey || 'row'}-${index}`">
+                      <tr v-if="row.isHeader" class="summary-header-row">
+                        <td colspan="4" class="text-left text-weight-bold">
+                          {{ row.label }}
+                        </td>
+                      </tr>
+                      <tr v-else-if="row.isOverallSpacer" class="summary-overall-spacer-row">
+                        <td colspan="4"></td>
+                      </tr>
+                      <tr v-else-if="row.isOverallFooter" class="summary-overall-footer-row">
+                        <td class="text-left summary-item-name text-weight-bold">{{ row.label }}</td>
+                        <td class="text-right summary-metric text-weight-bold">{{ formatSummaryMean(row.mean) }}</td>
+                        <td class="text-right summary-description text-weight-bold">{{ row.description }}</td>
+                        <td class="text-right summary-interpretation text-weight-bold">{{ row.interpretation }}</td>
+                      </tr>
+                      <tr v-else-if="row.label === 'Total Average'" class="summary-total-average-row">
+                        <td class="text-left summary-item-name text-weight-bold">{{ row.label }}</td>
+                        <td class="text-right summary-metric text-weight-bold">{{ formatSummaryMean(row.mean) }}</td>
+                        <td class="text-right summary-description text-weight-bold">{{ row.description }}</td>
+                        <td class="text-right summary-interpretation text-weight-bold">{{ row.interpretation }}</td>
+                      </tr>
+                      <tr v-else>
+                        <td class="text-left summary-item-name">{{ row.label }}</td>
+                        <td class="text-right summary-metric">{{ formatSummaryMean(row.mean) }}</td>
+                        <td class="text-right summary-description">{{ row.description }}</td>
+                        <td class="text-right summary-interpretation">{{ row.interpretation }}</td>
+                      </tr>
+                    </template>
+
+                    <tr v-if="!summaryDisplayRows.length">
+                      <td colspan="4" class="text-center text-grey-6">No response summary available.</td>
+                    </tr>
+                  </tbody>
+                </q-markup-table>
+              </q-card>
+            </div>
+          </template>
         </q-tab-panel>
 
         <q-tab-panel name="action-report" class="q-pa-none">
@@ -312,6 +346,7 @@ export default {
       loading: false,
       saving: false,
       activeTab: this.$route.query?.tab || 'details',
+      fetchSummaryStatus: { loading: false, error: null },
 
       // Dynamic Component Data Pools
       actionReports: [],
@@ -426,6 +461,7 @@ export default {
 
     summaryDisplayRows () {
       const rows = [];
+      const overallFooterRows = [];
 
       const buildMeanDescription = (value) => {
         const numeric = Number(value);
@@ -451,10 +487,40 @@ export default {
 
       sourceStats.forEach((stat, statIndex) => {
         const indicatorName = stat.indicator_name || stat.name || stat.label || 'Indicator';
+        const normalizedName = String(indicatorName).trim();
         const indicatorKey = stat._id || stat.indicator_id || `${indicatorName}-${statIndex}`;
+        const isOverallIndicator = normalizedName.toLowerCase() === 'overall';
 
         const indicatorAverage = stat.mean ?? stat.current_average ?? stat.average ?? getIndicatorAverage(stat);
         const averageMeta = buildMeanDescription(indicatorAverage);
+
+        if (isOverallIndicator) {
+          const overallItems = Array.isArray(stat.evaluation_items) && stat.evaluation_items.length
+            ? stat.evaluation_items
+            : [{
+                name: 'Overall',
+                mean: indicatorAverage,
+                description: averageMeta.description,
+                interpretation: averageMeta.interpretation,
+                _id: `${indicatorKey}-overall`
+              }];
+
+          overallItems.forEach((item, itemIndex) => {
+            const itemMean = Number(item.mean ?? item.rating ?? item.value ?? item.score ?? indicatorAverage ?? 0);
+            const itemMeta = buildMeanDescription(itemMean);
+
+            overallFooterRows.push({
+              isHeader: false,
+              isOverallFooter: true,
+              label: item.name || item.item_name || item.label || 'Overall',
+              mean: itemMean,
+              description: item.description || itemMeta.description,
+              interpretation: item.interpretation || itemMeta.interpretation,
+              itemKey: item._id || item.item_id || `${indicatorKey}-overall-${itemIndex}`
+            });
+          });
+          return;
+        }
 
         rows.push({
           isHeader: true,
@@ -497,14 +563,16 @@ export default {
         });
       });
 
-      if (rows.length) {
-        const indicatorAverages = rows
-          .filter(row => !row.isHeader && row.label !== 'Average' && Number.isFinite(Number(row.mean)))
-          .map(row => Number(row.mean));
+      const indicatorAverages = sourceStats
+        .filter((stat) => {
+          const indicatorName = stat.indicator_name || stat.name || stat.label || 'Indicator';
+          return String(indicatorName).trim().toLowerCase() !== 'overall';
+        })
+        .map((stat) => Number(stat.mean ?? stat.current_average ?? stat.average ?? getIndicatorAverage(stat)))
+        .filter((value) => Number.isFinite(value));
 
-        const totalAverage = indicatorAverages.length
-          ? indicatorAverages.reduce((sum, value) => sum + value, 0) / indicatorAverages.length
-          : 0;
+      if (indicatorAverages.length) {
+        const totalAverage = indicatorAverages.reduce((sum, value) => sum + value, 0) / indicatorAverages.length;
         const totalAverageMeta = buildMeanDescription(totalAverage);
 
         rows.push({
@@ -515,6 +583,19 @@ export default {
           interpretation: totalAverageMeta.interpretation,
           itemKey: 'total-average'
         });
+
+        if (overallFooterRows.length) {
+          rows.push({
+            isHeader: false,
+            isOverallSpacer: true,
+            label: '',
+            mean: null,
+            description: '',
+            interpretation: '',
+            itemKey: 'overall-spacer'
+          });
+          rows.push(...overallFooterRows);
+        }
       }
 
       return rows;
@@ -715,6 +796,7 @@ export default {
     },
 
     async getResponseStats () {
+      this.fetchSummaryStatus.loading = true;
       const targetId = this.$route.params.id;
 
       if (!targetId) {
@@ -722,6 +804,12 @@ export default {
       }
 
       try {
+        if(this.evaluation.status === 'DRAFT') {
+          this.responseStats = [];
+          this.fetchSummaryStatus.loading = false;
+          this.fetchSummaryStatus.error = 'Summary statistics are only available for evaluations that are not in DRAFT status.';
+          return;
+        }
         const response = await api.getResponseStatistics(targetId);
 
         if (!response || response.error || !response.success) {
@@ -754,13 +842,15 @@ export default {
             }
           }
         }
-        console.log('evaluation', this.evaluation)
       } catch (error) {
         this.responseStats = [];
         this.$q.notify({
           type: 'negative',
           message: error.message || 'Failed to load evaluation response statistics.'
         });
+        this.fetchSummaryStatus.error = error.message || 'Failed to load evaluation response statistics.';
+      } finally {
+        this.fetchSummaryStatus.loading = false;
       }
     },
 
@@ -1149,13 +1239,62 @@ export default {
 </script>
 
 <style scoped>
+.summary-panel-shell {
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+  position: relative;
+}
+
+.summary-sticky-legend {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #fff;
+}
+
+.summary-table-card {
+  position: relative;
+}
+
+.summary-table-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+}
+
 .summary-report-table {
   width: 100%;
   overflow-x: auto;
 }
 
 .summary-report-table thead th {
+  position: sticky;
+  top: 106px;
+  z-index: 4;
+  background: #fff;
   white-space: nowrap;
+}
+
+.summary-total-average-row {
+  border-top: 2px solid #dbe2ea;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02);
+}
+
+.summary-overall-spacer-row td {
+  height: 12px;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.summary-overall-footer-row {
+  border-top: 1px solid #e5e7eb;
+}
+
+.summary-overall-footer-row td {
+  padding-top: 12px;
 }
 
 @media (max-width: 600px) {
@@ -1226,6 +1365,11 @@ export default {
     content: 'Interpretation';
     color: #6b7280;
     font-weight: 600;
+  }
+
+  .summary-total-average-row {
+    border-top: 2px solid #dbe2ea;
+    box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02);
   }
 
   .details-heading {

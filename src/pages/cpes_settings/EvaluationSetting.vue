@@ -88,7 +88,16 @@
           >
             <!-- 🔶 LEVEL 1: INDICATOR ENTRY HEADER -->
             <q-card-section class="bg-white row q-col-gutter-sm items-center q-py-sm border-bottom">
-              <q-input v-model="ind.name" label="Indicator Heading *" dense outlined class="col-12 col-sm-5" :rules="[val => !!val || 'Required']" />
+              <q-input
+                v-model="ind.name"
+                label="Indicator Heading *"
+                dense
+                outlined
+                class="col-12 col-sm-5"
+                :rules="[val => !!val || 'Required']"
+                @blur="validateIndicatorName(ind, indIdx)"
+                @update:model-value="value => validateIndicatorName(ind, indIdx, value)"
+              />
               
               <!-- 🔐 Updated Context: Managing Authority Selection Dropdown -->
               <q-select 
@@ -121,7 +130,16 @@
             <q-card-section class="q-pa-md bg-white">
               <div class="row justify-between items-center q-mb-md">
                 <div class="text-caption text-weight-bold text-grey-7">CRITERIA / QUESTIONS (EVALUATION ITEMS)</div>
-                <q-btn label="Add Question Item" icon="playlist_add" color="indigo-7" flat dense size="xs" :disable="!canEditIndicator(ind)" @click="addItem(indIdx)" />
+                <q-btn
+                  label="Add Question Item"
+                  icon="playlist_add"
+                  color="indigo-7"
+                  flat
+                  dense
+                  size="xs"
+                  :disable="!canEditIndicator(ind) || !canAddItemToIndicator(ind)"
+                  @click="addItem(indIdx)"
+                />
               </div>
 
               <div v-if="ind.items.length === 0" class="text-center text-grey-5 q-pa-sm text-caption bg-grey-2 rounded-borders">
@@ -130,33 +148,33 @@
 
               <!-- Item Matrix Columns -->
               <div v-else class="q-gutter-y-sm">
-                <div 
-                  v-for="(item, itemIdx) in ind.items" 
-                  :key="itemIdx" 
+                <div
+                  v-for="(item, itemIdx) in ind.items"
+                  :key="itemIdx"
                   :ref="el => setItemRowRef(indIdx, itemIdx, el)"
                   class="row q-col-gutter-sm items-start q-pa-xs border-item rounded-borders bg-blue-grey-1"
                 >
                   <q-input :ref="el => setItemInputRef(indIdx, itemIdx, el)" v-model="item.name" label="Question Text Description *" dense outlined class="col-12 col-sm-7" :readonly="!canEditIndicator(ind)" :rules="[val => !!val || 'Required']" />
-                  
-                  <q-input 
-                    v-model.number="item.sort_order" 
-                    type="number" 
-                    label="Order *" 
-                    dense 
-                    outlined 
-                    class="col-4 col-sm-1" 
+
+                  <q-input
+                    v-model.number="item.sort_order"
+                    type="number"
+                    label="Order *"
+                    dense
+                    outlined
+                    class="col-4 col-sm-1"
                     :readonly="!canEditIndicator(ind)"
-                    :rules="[val => val !== null && val !== '' || '']" 
+                    :rules="[val => val !== null && val !== '' || '']"
                   />
-                  
-                  <q-toggle 
-                    v-model="item.status" 
-                    true-value="ACTIVE" 
-                    false-value="INACTIVE" 
-                    color="green" 
-                    class="col-6 col-sm-3 justify-center" 
+
+                  <q-toggle
+                    v-model="item.status"
+                    true-value="ACTIVE"
+                    false-value="INACTIVE"
+                    color="green"
+                    class="col-6 col-sm-3 justify-center"
                     :disable="!canEditIndicator(ind)"
-                    label="Active Status" 
+                    label="Active Status"
                   />
 
                   <div class="col-2 col-sm-1 text-center q-pt-xs">
@@ -304,6 +322,33 @@ export default {
         return Boolean(assignedRole && this.currentUserRoles.includes(assignedRole))|| this.currentUserRoles.includes('admin'.toUpperCase());
       },
 
+      isOverallIndicator (indicator) {
+        return String(indicator?.name || '').trim().toLowerCase() === 'overall';
+      },
+
+      validateIndicatorName (indicator, index, value = null) {
+        const rawName = value !== null ? String(value ?? '') : String(indicator?.name ?? '');
+        const normalized = rawName.trim();
+
+        if (!normalized) return;
+        if (normalized.toLowerCase() !== 'overall') return;
+
+        const duplicateExists = this.indicators.some((existingIndicator, existingIndex) => {
+          if (existingIndex === index) return false;
+          return this.isOverallIndicator(existingIndicator);
+        });
+
+        if (duplicateExists) {
+          myDialog.negative(this.$q, 'Validation Error', "Only one 'Overall' indicator is allowed.");
+          indicator.name = '';
+        }
+      },
+
+      canAddItemToIndicator (indicator) {
+        if (!this.isOverallIndicator(indicator)) return true;
+        return (indicator?.items?.length || 0) < 1;
+      },
+
     // Select an evaluation and mock loading its children indicators and items
     async selectEvaluation (evalRow) {
       this.selectedEval = evalRow;
@@ -438,28 +483,25 @@ export default {
 
     // 🔶 LEVEL 1 operations: Indicators array interactions
     addIndicator () {
-    // 1. Push the new item row structure into the array
-        this.indicators.push({
-            evaluation_id: this.selectedEval._id,
-            name: '',
-            sort_order: this.indicators.length + 1,
-            assigned_role: 'VCAA',
-            status: 'INACTIVE',
-            items: []
-        });
+      this.indicators.push({
+        evaluation_id: this.selectedEval._id,
+        name: '',
+        sort_order: this.indicators.length + 1,
+        assigned_role: 'VCAA',
+        status: 'INACTIVE',
+        items: []
+      });
 
-        // 2. Wait for Vue to finish rendering the new card into the DOM
-        this.$nextTick(() => {
-            const scrollContainer = this.$refs.workspaceScroll;
-            
-            if (scrollContainer) {
-            // 3. Smoothly animate the container down to its maximum scroll depth height
-            scrollContainer.scrollTo({
-                top: scrollContainer.scrollHeight,
-                behavior: 'smooth'
-            });
-            }
-        });
+      this.$nextTick(() => {
+        const scrollContainer = this.$refs.workspaceScroll;
+
+        if (scrollContainer) {
+          scrollContainer.scrollTo({
+            top: scrollContainer.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      });
     },
 
     removeIndicator (index) {
@@ -468,8 +510,16 @@ export default {
 
     // 🔷 LEVEL 2 operations: Internal item nested mapping arrays
     addItem (indIdx) {
-      const itemIdx = this.indicators[indIdx].items.length;
-      this.indicators[indIdx].items.push({
+      const indicator = this.indicators[indIdx];
+      if (!indicator) return;
+
+      if (this.isOverallIndicator(indicator) && (indicator.items?.length || 0) >= 1) {
+        myDialog.negative(this.$q, 'Validation Error', "The 'Overall' indicator may contain only one evaluation item.");
+        return;
+      }
+
+      const itemIdx = indicator.items.length;
+      indicator.items.push({
         name: '',
         sort_order: itemIdx + 1,
         status: 'INACTIVE'
@@ -511,6 +561,19 @@ export default {
             }
           }
         }
+
+        const overallIndicators = this.indicators.filter(ind => this.isOverallIndicator(ind));
+        if (overallIndicators.length > 1) {
+          myDialog.negative(this.$q, 'Validation Error', "Only one 'Overall' indicator is allowed.");
+          return;
+        }
+
+        const overallIndicator = overallIndicators[0];
+        if (overallIndicator && (overallIndicator.items?.length || 0) > 1) {
+          myDialog.negative(this.$q, 'Validation Error', "The 'Overall' indicator may contain only one evaluation item.");
+          return;
+        }
+
         //check each indicator and item for sort_order uniqueness
         for (let ind of this.indicators) {
           let indicatorSortOrders = new Set();
