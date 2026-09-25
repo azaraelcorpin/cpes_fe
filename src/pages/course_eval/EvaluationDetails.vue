@@ -231,13 +231,67 @@
 
         <q-tab-panel name="action-report" class="q-pa-none">
           <q-card flat bordered class="bg-white">
-            <q-card-section><div class="text-subtitle1 text-weight-bold">Action Report by Indicator</div><div class="text-caption text-grey-6">Capture remarks and action items for each indicator.</div></q-card-section>
+            <q-card-section>
+              <div class="text-subtitle1 text-weight-bold">Action Report by Indicator</div>
+              <div class="text-caption text-grey-6">Review the significantly lowest-rated item(s), then record remarks and the required action.</div>
+            </q-card-section>
+            <q-separator />
+
+            <q-card-section class="action-report-table-header row q-col-gutter-lg text-caption text-weight-bold text-grey-7">
+              <div class="col-12 col-md-6">Remarks</div>
+              <div class="col-12 col-md-6">Action</div>
+            </q-card-section>
+
             <q-list separator>
-              <q-item v-for="indicator in evaluation.indicators" :key="indicator._id" class="q-py-md">
-                <q-item-section><q-item-label class="text-weight-bold">{{ indicator.name }}</q-item-label><q-item-label caption>{{ actionReportFor(indicator)._id ? 'Report recorded' : 'No report recorded' }}</q-item-label></q-item-section>
-                <q-item-section class="col-12 col-md-4"><q-input :model-value="actionReportFor(indicator).remarks" dense outlined label="Remarks" :disable="!isDraft" @update:model-value="value => updateActionReport(indicator, 'remarks', value)" /></q-item-section>
-                <q-item-section class="col-12 col-md-4"><q-input :model-value="actionReportFor(indicator).action" dense outlined label="Action" :disable="!isDraft" @update:model-value="value => updateActionReport(indicator, 'action', value)" /></q-item-section>
-                <q-item-section side><q-btn icon="save" flat round color="primary" :disable="!isDraft" @click="saveActionReport(indicator)" /></q-item-section>
+              <q-item v-for="indicator in evaluation.indicators" :key="indicator._id" class="action-report-row q-py-lg">
+                <q-item-section class="col-12">
+                  <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-md">
+                    {{ indicator.indicator_name || indicator.name || 'Indicator' }}
+                  </div>
+
+                  <div class="row q-col-gutter-lg">
+                    <div class="col-12 col-md-6 action-report-column">
+                      <div class="lowest-rated-panel q-mb-md">
+                        <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Significantly Lowest Rated Item/s</div>
+                        <template v-if="lowestRatedItemsFor(indicator).length">
+                          <div v-for="item in lowestRatedItemsFor(indicator)" :key="item._id || item.item_id || item.name" class="row items-start no-wrap q-mb-xs">
+                            <q-icon name="priority_high" color="negative" size="18px" class="q-mr-xs q-mt-xs" />
+                            <div class="text-body2 text-grey-8">
+                              {{ item.name || item.item_name || 'Unnamed item' }}
+                              <span class="text-caption text-negative text-weight-bold q-ml-xs">({{ formatSummaryMean(item.mean) }})</span>
+                            </div>
+                          </div>
+                        </template>
+                        <div v-else class="text-caption text-grey-6">No item averages available.</div>
+                      </div>
+                      <div class="comments-panel">
+                        <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Remarks</div>
+                        <div v-if="commentsForIndicator(indicator).length" class="comments-list">
+                          <div v-for="(comment, commentIndex) in commentsForIndicator(indicator)" :key="`${indicator._id}-comment-${commentIndex}`" class="comment-entry text-body2 text-grey-8">
+                            {{ comment }}
+                          </div>
+                        </div>
+                        <div v-else class="text-caption text-grey-6">No comments recorded for this indicator.</div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-6 action-report-column">
+                      <q-input
+                        :model-value="actionReportFor(indicator).action"
+                        type="textarea"
+                        outlined
+                        label="Action"
+                        class="action-input"
+                        :disable="!canEditActionReport"
+                        @update:model-value="value => updateActionReport(indicator, 'action', value)"
+                      />
+                    </div>
+                  </div>
+
+                  <div class="row justify-end q-mt-md">
+                    <q-btn icon="save" label="Save report" unelevated color="primary" no-caps :disable="!canEditActionReport" @click="saveActionReport(indicator)" />
+                  </div>
+                </q-item-section>
               </q-item>
             </q-list>
           </q-card>
@@ -404,6 +458,10 @@ export default {
       return this.evaluation?.status === 'DRAFT';
     },
 
+    canEditActionReport () {
+      return this.isDraft || this.evaluation?.status === 'CLOSED';
+    },
+
     totalEvaluationItems () {
       return (this.evaluation?.indicators || []).reduce(
         (total, indicator) => total + (indicator.evaluation_items?.length || 0),
@@ -481,9 +539,9 @@ export default {
         return items.length ? total / items.length : 0;
       };
 
-      const sourceStats = Array.isArray(this.responseStats) && this.responseStats.length
-        ? this.responseStats
-        : this.evaluation?.indicators || [];
+      // Response statistics are item-level records. The evaluation structure is
+      // the authoritative source for the complete indicator and item list.
+      const sourceStats = this.evaluation?.indicators || [];
 
       sourceStats.forEach((stat, statIndex) => {
         const indicatorName = stat.indicator_name || stat.name || stat.label || 'Indicator';
@@ -541,7 +599,7 @@ export default {
           items.forEach((item, itemIndex) => {
             const itemMean = Number(item.mean ?? item.rating ?? item.value ?? item.score ?? 0);
             const itemMeta = buildMeanDescription(itemMean);
-
+            
             rows.push({
               isHeader: false,
               label: item.name || item.item_name || item.label || `Item ${itemIndex + 1}`,
@@ -731,7 +789,7 @@ export default {
         if (!response || response.error || !response.success) {
           throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluation members.');
         }
-        console.log('evaluation Member',this.evaluation)
+
         if(!this.evaluation.members)
           this.evaluation.members = [];
         this.evaluation.members = Array.isArray(response.data) ? response.data : [];
@@ -781,8 +839,14 @@ export default {
         if (!details) throw new Error('Evaluation details were not found.');
 
         this.evaluation = this.normalizeEvaluationDetails(details);
-        this.actionReports = details.actionReports || details.action_reports || [];
+        this.actionReports = (details.actionReports || details.action_reports || [])
+          .map(report => ({
+            indicator_id: report.indicator_id,
+            action: report.action || ''
+          }))
+          .filter(report => report.indicator_id !== undefined && report.indicator_id !== null);
         this.getResponseStats();
+        this.getCommentsByEvaluationId();
         this.fetchEvaluationMembers();
       } catch (error) {
         this.evaluation = null;
@@ -854,6 +918,26 @@ export default {
       }
     },
 
+    async getCommentsByEvaluationId () {
+      try {
+        const response = await api.getCommentsByEvaluationId(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluation comments.');
+        }
+        const comments = Array.isArray(response.data) ? response.data : [];
+        for(const indicator of this.evaluation.indicators) {
+          const matchingComment = comments.find(comment => String(comment.indicator_id) === String(indicator.indicator_id));
+          indicator.comments = matchingComment?.comments ?? matchingComment?.comment ?? matchingComment?.text ?? null;
+        }
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load evaluation comments.'
+        });
+        
+      }
+    },
+
     normalizeEvaluationDetails (details) {
       const indicators = details.indicators || details.evaluation_indicators || [];
       const evaluationItems = details.evaluation_items || details.evaluationItems || [];
@@ -861,21 +945,27 @@ export default {
       return {
         ...details,
         indicators: indicators.map((indicator) => {
-          const indicatorItems = indicator.evaluation_items || indicator.items || indicator.evaluationItems;
-          const items = indicatorItems?.length ? indicatorItems : evaluationItems.filter((item) => {
-            const itemIndicatorId = item.indicator_id || item.indicatorId;
-            return String(itemIndicatorId) === String(indicator._id || indicator.id);
+          const indicatorItems = [indicator.evaluation_items, indicator.items, indicator.evaluationItems]
+            .find(Array.isArray) || [];
+          const indicatorId = indicator._id || indicator.id || indicator.indicator_id;
+          const relatedItems = evaluationItems.filter((item) => {
+            const itemIndicatorId = item.indicator_id || item.indicatorId || item.indicator_id_fk;
+            return String(itemIndicatorId) === String(indicatorId);
+          });
+          const items = [...indicatorItems, ...relatedItems].filter((item, index, allItems) => {
+            const itemId = item._id || item.id || item.item_id;
+            return allItems.findIndex(candidate => String(candidate._id || candidate.id || candidate.item_id) === String(itemId)) === index;
           });
 
           return {
             ...indicator,
-            evaluation_items: Array.isArray(items) ? items.map((item, index) => ({
+            evaluation_items: items.map((item, index) => ({
               ...item,
               _id: item._id || item.id || item.item_id || `${indicator._id || indicator.id || 'indicator'}-${index + 1}`,
               item_id: item.item_id || item.id || item._id || null,
               sort_order: item.sort_order || item.sortOrder || index + 1,
               name: item.name || item.item_name || item.itemName || item.question || 'Unnamed evaluation item'
-            })) : []
+            })).sort((firstItem, secondItem) => Number(firstItem.sort_order) - Number(secondItem.sort_order))
           };
         })
       };
@@ -891,6 +981,36 @@ export default {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) return value;
       return numeric.toFixed(2);
+    },
+
+    lowestRatedItemsFor (indicator) {
+      const items = Array.isArray(indicator?.evaluation_items) ? indicator.evaluation_items : [];
+      const ratedItems = items
+        .map((item) => {
+          const mean = Number(item.mean ?? item.average_rating ?? item.average ?? item.rating ?? item.value);
+          return Number.isFinite(mean) ? { ...item, mean } : null;
+        })
+        .filter(Boolean);
+
+      if (!ratedItems.length) return [];
+
+      const lowestMean = Math.min(...ratedItems.map(item => item.mean));
+      return ratedItems.filter(item => Math.abs(item.mean - lowestMean) < 0.0001);
+    },
+
+    commentsForIndicator (indicator) {
+      const source = indicator?.comments ?? indicator?.comment ?? [];
+      const comments = Array.isArray(source) ? source : [source];
+
+      return comments
+        .map(comment => {
+          if (comment && typeof comment === 'object') {
+            return comment.comments ?? comment.comment ?? comment.text ?? '';
+          }
+          return comment;
+        })
+        .map(comment => String(comment || '').trim())
+        .filter(Boolean);
     },
 
     getStatusColor (status) {
@@ -921,9 +1041,10 @@ export default {
     },
 
     actionReportFor (indicator) {
-      let report = this.actionReports.find(item => String(item.indicator_id) === String(indicator._id));
+      const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
+      let report = this.actionReports.find(item => String(item.indicator_id) === String(indicatorId));
       if (!report) {
-        report = { _id: null, indicator_id: indicator._id, evaluation_id: this.evaluation._id, remarks: '', action: '' };
+        report = { indicator_id: indicatorId, action: '' };
         this.actionReports.push(report);
       }
       return report;
@@ -1257,9 +1378,6 @@ export default {
 }
 
 .summary-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
 }
@@ -1269,12 +1387,41 @@ export default {
   overflow-x: auto;
 }
 
+.summary-report-table :deep(.q-table) {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.summary-report-table th,
+.summary-report-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.summary-report-table th:nth-child(1),
+.summary-report-table td:nth-child(1) {
+  width: 46%;
+}
+
+.summary-report-table th:nth-child(2),
+.summary-report-table td:nth-child(2) {
+  width: 14%;
+}
+
+.summary-report-table th:nth-child(3),
+.summary-report-table td:nth-child(3) {
+  width: 19%;
+}
+
+.summary-report-table th:nth-child(4),
+.summary-report-table td:nth-child(4) {
+  width: 21%;
+}
+
 .summary-report-table thead th {
-  position: sticky;
-  top: 106px;
-  z-index: 4;
   background: #fff;
-  white-space: nowrap;
 }
 
 .summary-total-average-row {
@@ -1431,6 +1578,54 @@ export default {
 .empty-items {
   min-height: 64px;
   background: #fcfdfe;
+}
+.action-report-table-header {
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+.action-report-row {
+  display: block;
+}
+.action-report-column {
+  display: flex;
+  flex-direction: column;
+}
+.comments-panel,
+.action-input {
+  flex: 1 1 auto;
+}
+.comments-panel {
+  min-height: 128px;
+  padding: 12px;
+  border: 1px solid #dfe5ee;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comment-entry {
+  padding: 8px 10px;
+  border-left: 3px solid #90a4ae;
+  background: #f8fafc;
+  white-space: pre-wrap;
+}
+.action-input {
+  min-height: 128px;
+}
+.action-input :deep(.q-field__control),
+.action-input :deep(.q-field__native) {
+  height: 100%;
+  min-height: 128px;
+}
+.lowest-rated-panel {
+  min-height: 74px;
+  padding: 10px 12px;
+  border-left: 4px solid #c62828;
+  border-radius: 6px;
+  background: #fff7f7;
 }
 .font-mono {
   font-family: monospace;

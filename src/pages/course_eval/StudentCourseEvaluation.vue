@@ -89,6 +89,26 @@
 							</div>
 						</q-card-section>
 					</q-card>
+
+					<q-card
+						v-if="isCommentEnabled(indicator)"
+						flat
+						bordered
+						class="comment-card q-mb-md"
+					>
+						<q-card-section class="q-pb-sm">
+							<div class="text-subtitle2 text-weight-medium text-grey-8 q-mb-sm">Comments</div>
+							<q-input
+								v-model="comments[indicator.indicator_id]"
+								type="textarea"
+								autogrow
+								outlined
+								:label="`Share your comments for ${indicator.indicator_name}`"
+								:maxlength="500"
+								counter
+							/>
+						</q-card-section>
+					</q-card>
 				</section>
 
 				<q-card v-if="!totalItems" flat bordered class="q-pa-lg text-center text-grey-6">
@@ -171,6 +191,7 @@ export default {
 			evaluationData: null,
 			loading: false,
 			answers: {},
+			comments: {},
 			ratingScales: {
 				'1': [
 					{ label: 'Strongly Agree', value: 4 },
@@ -230,6 +251,15 @@ export default {
 				item_id: Number(itemId),
 				given_rating: givenRating
 			}))
+		},
+
+		commentPayload () {
+			return Object.entries(this.comments)
+				.filter(([, comment]) => Boolean(comment) && String(comment).trim())
+				.map(([indicatorId, comment]) => ({
+					indicator_id: Number(indicatorId),
+					comment: String(comment).trim()
+				}))
 		}
 	},
 
@@ -238,6 +268,7 @@ export default {
 			deep: true,
 			handler () {
 				this.answers = {}
+				this.comments = {}
 			}
 		}
 	},
@@ -250,6 +281,7 @@ export default {
 		async fetchEvaluationData () {
 			const evaluationId = this.$route.params.id
 			const course_code = this.$route.params.course_code
+
 			console.log('evaluationId', evaluationId)
 
 			if (!evaluationId && !course_code) {
@@ -258,15 +290,26 @@ export default {
 			}
 			this.loading = true
 
+
 			try {
 				const response = evaluationId ? await api.getByEvaluation_Id(evaluationId) : await api.getEvaluationFormDetailsByCourseCode(course_code)
-
+				
 				if (!response?.success || !Array.isArray(response.data) || !response.data.length) {
-					throw new Error(response?.error?.response?.data?.message || 'Evaluation details were not found.')
+					//if the response has status = 409, redirect to submitted evaluation page
+					if (response?.error?.response?.status === 409) {
+						const submittedEvaluationId = response?.error?.response?.data?.evaluationId
+						myDialog.negative(this.$q, 'Evaluation Already Submitted', 'You have already submitted this evaluation. Redirecting to the submitted evaluation page.')
+						this.$router.push({ name: 'studentSubmittedEvaluation', params: { id: submittedEvaluationId } })
+						return
+					}
+					myDialog.negative(this.$q, 'Evaluation Not Found', 'The evaluation details could not be found. Please check the evaluation ID or course code and try again.')
+					this.$router.push({ name: 'studentEnrolledCourses' })
+					return
 				}
 
 				this.evaluationData = response.data[0]
 				this.answers = {}
+				this.comments = {}
 			} catch (error) {
 				this.notifyError(error.message || 'Failed to load evaluation details.')
 			} finally {
@@ -286,6 +329,11 @@ export default {
 
 		isAnswered (itemId) {
 			return this.answers[itemId] !== undefined && this.answers[itemId] !== null
+		},
+
+		isCommentEnabled (indicator) {
+			if (!indicator) return false
+			return [true, 'true', 1, '1'].includes(indicator.enable_comments)
 		},
 
 		async submitEvaluation () {
@@ -309,7 +357,8 @@ export default {
 			const payload = {
 				evaluation_id: evaluationId,
 				email: userEmail,
-				response_item: this.submissionPayload
+				response_item: this.submissionPayload,
+				comments: this.commentPayload
 			}
 			// ask for confirmation before submission. Once submitted, the evaluation cannot be edited.
 			let confirm = await myDialog.confirm(this.$q, 'Confirm Submission', 'Are you sure you want to submit this evaluation? Once submitted, it cannot be edited.')
@@ -396,6 +445,12 @@ export default {
 	min-width: 0;
 	white-space: normal;
 	line-height: 1.3;
+}
+
+.comment-card {
+	border-left: 4px solid #ffb300;
+	border-radius: 8px;
+	background: #fffaf0;
 }
 
 .captcha-card {

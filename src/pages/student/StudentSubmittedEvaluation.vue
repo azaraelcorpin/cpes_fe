@@ -86,6 +86,15 @@
               </q-item-section>
             </q-item>
           </q-list>
+
+          <q-card v-if="hasIndicatorComment(indicator)" flat bordered class="comment-panel q-mt-md">
+            <q-card-section>
+              <div class="text-subtitle2 text-weight-medium text-grey-8 q-mb-sm">Comments</div>
+              <div class="text-body2 text-grey-8 comment-text">
+                {{ getIndicatorComment(indicator) }}
+              </div>
+            </q-card-section>
+          </q-card>
         </div>
       </template>
 
@@ -311,6 +320,16 @@ export default {
       if (rating === 3) return 'warning'
       if (rating === 2 || rating === 1) return 'negative'
       return 'grey'
+    },
+
+    hasIndicatorComment (indicator) {
+      return indicator.comments && indicator.comments.length > 0
+    },
+
+    getIndicatorComment (indicator) {
+      return indicator.comments && indicator.comments.length > 0
+        ? indicator.comments.map(comment => comment.comment || comment.text || '').join('\n\n')
+        : 'No comments provided.' 
     }
   }
 }
@@ -339,6 +358,17 @@ export default {
 .indicator-header {
   padding-bottom: 10px;
   border-bottom: 1px solid #dfe5ee;
+}
+
+.comment-panel {
+  border-left: 4px solid #ffb300;
+  background: #fffaf0;
+  border-radius: 10px;
+}
+
+.comment-text {
+  white-space: pre-wrap;
+  line-height: 1.6;
 }
 
 .rounded-borders {

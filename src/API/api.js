@@ -823,6 +823,28 @@ export default {
       }
     },
 
+    //getCommentsByEvaluationId
+    async getCommentsByEvaluationId(evaluationId){
+      var path = '/api/course-evaluation/responses/getCommentsByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getCommentsByEvaluationId Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
 
     //#endregion course_eval API
 

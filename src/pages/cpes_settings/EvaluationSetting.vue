@@ -93,7 +93,7 @@
                 label="Indicator Heading *"
                 dense
                 outlined
-                class="col-12 col-sm-5"
+                class="col-12 col-sm-3"
                 :rules="[val => !!val || 'Required']"
                 @blur="validateIndicatorName(ind, indIdx)"
                 @update:model-value="value => validateIndicatorName(ind, indIdx, value)"
@@ -118,6 +118,20 @@
                 class="col-6 col-sm-1" 
                 :rules="[val => val !== null && val !== '' || '']" 
                 />
+
+              <q-toggle
+                v-model="ind.enable_comments"
+                color="amber-7"
+                class="col-6 col-sm-2 justify-center"
+                label="Comments"
+                checked-icon="comment"
+                unchecked-icon="comment_disabled"
+              >
+                <q-tooltip>
+                  Enable or disable comments for this indicator
+                </q-tooltip>
+              </q-toggle>
+
               
               <q-toggle v-model="ind.status" true-value="ACTIVE" false-value="INACTIVE" checked-icon="check" color="green" unchecked-icon="clear" class="col-6 col-sm-2 justify-center" label="Active" />
               
@@ -390,7 +404,11 @@ export default {
         let response = await api.getEvaluationTemplateProfile(evalId);
      
         if (response && response.data) {
-          this.indicators = Object.values(response.data);
+          this.indicators = Object.values(response.data).map(indicator => ({
+            ...indicator,
+            enable_comments: indicator.enable_comments === true || indicator.enable_comments === 'true',
+            items: Array.isArray(indicator.items) ? indicator.items : []
+          }));
         } else {
           myDialog.negative(this.$q, 'Error', 'Failed to load indicators. No data returned from API.');
         }
@@ -489,6 +507,7 @@ export default {
         sort_order: this.indicators.length + 1,
         assigned_role: 'VCAA',
         status: 'INACTIVE',
+        enable_comments: false,
         items: []
       });
 
