@@ -231,7 +231,7 @@
 
         <q-tab-panel name="action-report" class="q-pa-none">
           <q-card flat bordered class="bg-white">
-            <q-card-section>
+            <q-card-section class="q-pb-xl">
               <div class="text-subtitle1 text-weight-bold">Action Report by Indicator</div>
               <div class="text-caption text-grey-6">Review the significantly lowest-rated item(s), then record remarks and the required action.</div>
             </q-card-section>
@@ -1582,6 +1582,7 @@ export default {
 .action-report-table-header {
   background: #f8fafc;
   border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
 }
 .action-report-row {
   display: block;
