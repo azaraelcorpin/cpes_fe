@@ -127,6 +127,8 @@ export default{
             if(role.value === 'student')
               SID.email = 'denierich.falalimpa@msugensan.edu.ph';
             //////
+            if(role.value === 'faculty')
+              SID.email = 'elena.reyes@msugensan.edu.ph';
 
             console.log(!SID.email.includes('@msugensan.edu.ph'))
             if(!SID.email.includes('@msugensan.edu.ph'))
@@ -153,6 +155,8 @@ export default{
 
                       localStorage.clear();
                       localStorage.setItem("userRoles",JSON.stringify(sid.role))
+                      if(role.value === 'faculty')
+                      localStorage.setItem("userRoles",JSON.stringify('FACULTY'))
                       if(sid.dept_code)
                         localStorage.setItem("dept_code",JSON.stringify(sid.dept_code))
                       if(sid.college_code)

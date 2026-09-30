@@ -32,7 +32,7 @@ const routes = [
     name: 'manageEvaluations',
     meta: {
       title: 'Evaluation Management',
-      roles: ['COORDINATOR','CHAIRPERSON', 'DEAN', 'admin']
+      roles: ['FACULTY','CHAIRPERSON', 'DEAN', 'admin']
     },
     icon: 'assignment',
     visible: true,
@@ -44,7 +44,7 @@ const routes = [
                 component: () => import('pages/course_eval/ManageCourseEvaluations.vue'),
                 meta: {
                   title: 'Course Evaluations',
-                  roles: ['COORDINATOR','CHAIRPERSON', 'DEAN', 'admin']
+                  roles: ['FACULTY','CHAIRPERSON', 'DEAN', 'admin']
                 },
                 icon: 'assignment',
                 visible: true,

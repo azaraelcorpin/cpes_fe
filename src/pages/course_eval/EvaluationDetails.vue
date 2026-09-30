@@ -230,27 +230,25 @@
         </q-tab-panel>
 
         <q-tab-panel name="action-report" class="q-pa-none">
+          <div class="action-report-scroll-area">
           <q-card flat bordered class="bg-white">
-            <q-card-section class="q-pb-xl">
-              <div class="text-subtitle1 text-weight-bold">Action Report by Indicator</div>
-              <div class="text-caption text-grey-6">Review the significantly lowest-rated item(s), then record remarks and the required action.</div>
+            <q-card-section class="action-report-header q-pb-xl">
+              <div>
+                <div class="text-subtitle1 text-weight-bold">Action Report by Indicator</div>
+                <div class="text-caption text-grey-6">Review the significantly lowest-rated items, remarks, actions, and member suggestions.</div>
+              </div>
             </q-card-section>
             <q-separator />
 
-            <q-card-section class="action-report-table-header row q-col-gutter-lg text-caption text-weight-bold text-grey-7">
-              <div class="col-12 col-md-6">Remarks</div>
-              <div class="col-12 col-md-6">Action</div>
-            </q-card-section>
-
             <q-list separator>
-              <q-item v-for="indicator in evaluation.indicators" :key="indicator._id" class="action-report-row q-py-lg">
-                <q-item-section class="col-12">
+              <q-item v-for="indicator in evaluation.indicators" :key="indicator._id" class="q-py-lg">
+                <q-item-section>
                   <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-md">
                     {{ indicator.indicator_name || indicator.name || 'Indicator' }}
                   </div>
-
-                  <div class="row q-col-gutter-lg">
-                    <div class="col-12 col-md-6 action-report-column">
+                  <div class="row items-stretch q-col-gutter-lg">
+                    <div class="col-12 col-md-4 action-report-column">
+                      <div class="text-subtitle2 text-weight-bold q-mb-sm">Remarks</div>
                       <div class="lowest-rated-panel q-mb-md">
                         <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Significantly Lowest Rated Item/s</div>
                         <template v-if="lowestRatedItemsFor(indicator).length">
@@ -265,7 +263,7 @@
                         <div v-else class="text-caption text-grey-6">No item averages available.</div>
                       </div>
                       <div class="comments-panel">
-                        <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Remarks</div>
+                        <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Respondent comments</div>
                         <div v-if="commentsForIndicator(indicator).length" class="comments-list">
                           <div v-for="(comment, commentIndex) in commentsForIndicator(indicator)" :key="`${indicator._id}-comment-${commentIndex}`" class="comment-entry text-body2 text-grey-8">
                             {{ comment }}
@@ -275,7 +273,8 @@
                       </div>
                     </div>
 
-                    <div class="col-12 col-md-6 action-report-column">
+                    <div class="col-12 col-md-4 action-report-column">
+                      <div class="text-subtitle2 text-weight-bold q-mb-sm">Action</div>
                       <q-input
                         :model-value="actionReportFor(indicator).action"
                         type="textarea"
@@ -285,16 +284,50 @@
                         :disable="!canEditActionReport"
                         @update:model-value="value => updateActionReport(indicator, 'action', value)"
                       />
+                      <div class="row justify-end action-report-controls">
+                        <q-btn icon="save" label="Save action" unelevated color="positive" no-caps :disable="!canEditActionReport" @click="saveActionReport(indicator)" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div class="row justify-end q-mt-md">
-                    <q-btn icon="save" label="Save report" unelevated color="primary" no-caps :disable="!canEditActionReport" @click="saveActionReport(indicator)" />
+                    <div class="col-12 col-md-4 action-report-column">
+                      <div class="text-subtitle2 text-weight-bold q-mb-sm">Member Comments and Suggestion</div>
+                      <div v-if="actionReportFor(indicator).member_comments_suggestion.length" class="member-comments-list">
+                        <q-card
+                          v-for="(comment, commentIndex) in actionReportFor(indicator).member_comments_suggestion"
+                          :key="`${indicator._id}-member-comment-${commentIndex}`"
+                          flat
+                          bordered
+                          class="member-comment-card"
+                        >
+                          <q-card-section class="member-comment-content q-pa-sm">
+                            <div class="text-body2 text-grey-8 member-comment-text">{{ comment }}</div>
+                            <q-btn
+                              flat
+                              round
+                              dense
+                              size="sm"
+                              icon="close"
+                              color="negative"
+                              class="member-comment-remove"
+                              :disable="!isAssignedEvaluationMember"
+                              @click="removeMemberComment(indicator, commentIndex)"
+                            >
+                              <q-tooltip>Remove comment</q-tooltip>
+                            </q-btn>
+                          </q-card-section>
+                        </q-card>
+                      </div>
+                      <div v-else class="text-caption text-grey-6 q-mb-md">No member comments yet.</div>
+                      <div class="row justify-end action-report-controls">
+                        <q-btn icon="add_comment" label="Add comments" unelevated color="secondary" no-caps :disable="!isAssignedEvaluationMember" @click="addMemberComments(indicator)" />
+                      </div>
+                    </div>
                   </div>
                 </q-item-section>
               </q-item>
             </q-list>
           </q-card>
+          </div>
         </q-tab-panel>
 
         <q-tab-panel name="members" class="q-pa-none">
@@ -370,6 +403,35 @@
         </q-card>
       </q-dialog>
 
+      <q-dialog v-model="memberCommentDialog.show">
+        <q-card style="width: 560px; max-width: 95vw">
+          <q-form @submit="saveMemberComment">
+            <q-card-section class="row items-center q-pb-sm">
+              <div class="text-h6">Add member comment</div>
+              <q-space />
+              <q-btn flat round dense icon="close" v-close-popup aria-label="Close" />
+            </q-card-section>
+            <q-card-section class="q-pt-sm">
+              <div class="text-caption text-grey-7 q-mb-sm">
+                {{ memberCommentDialog.indicator?.indicator_name || memberCommentDialog.indicator?.name || 'Indicator' }}
+              </div>
+              <q-input
+                v-model="memberCommentDialog.text"
+                type="textarea"
+                outlined
+                autofocus
+                label="Comment or suggestion"
+                :rules="[requiredFieldValidation]"
+              />
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Cancel" v-close-popup />
+              <q-btn color="primary" icon="save" label="Save comment" type="submit" :disable="!memberCommentDialog.text.trim()" />
+            </q-card-actions>
+          </q-form>
+        </q-card>
+      </q-dialog>
+
     </div>
 
     <!-- 3. RENDER LOADER SKELETON WHILE OBJECT IS NULL -->
@@ -389,13 +451,16 @@
 import api from 'src/API/api.js'
 import sampleFacultyList from 'src/pages/course_eval/sampleFaculties.json'
 import myDialog from 'src/plugins/myDialog';
+import { useCookies } from 'vue3-cookies'
 
 export default {
   name: 'EvaluationDetailsWorkspace',
 
   data () {
+    const { cookies } = useCookies()
     return {
       // Main Structural State Containers
+      cookies,
       evaluation: null,
       loading: false,
       saving: false,
@@ -418,6 +483,11 @@ export default {
 
       memberDialog: {
         show: false
+      },
+      memberCommentDialog: {
+        show: false,
+        indicator: null,
+        text: ''
       },
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
       memberForm: {
@@ -459,7 +529,35 @@ export default {
     },
 
     canEditActionReport () {
-      return this.isDraft || this.evaluation?.status === 'CLOSED';
+      return (this.isDraft || this.evaluation?.status === 'CLOSED') && this.isAssignedCoordinator;
+    },
+
+    currentUserEmail () {
+      const rawUser = this.cookies?.get?.('_UID_');
+      let user = rawUser;
+
+      if (typeof rawUser === 'string') {
+        try {
+          user = JSON.parse(rawUser);
+        } catch (error) {
+          return '';
+        }
+      }
+
+      return String(user?.email || user?.userEmail || '').trim().toLowerCase();
+    },
+
+    isAssignedCoordinator () {
+      return Boolean(this.currentUserEmail) && (this.evaluation?.members || []).some(member =>
+        String(member.role || '').trim().toUpperCase() === 'COORDINATOR' &&
+        String(member.email || '').trim().toLowerCase() === this.currentUserEmail
+      );
+    },
+
+    isAssignedEvaluationMember () {
+      return Boolean(this.currentUserEmail) && (this.evaluation?.members || []).some(member =>
+        String(member.email || '').trim().toLowerCase() === this.currentUserEmail
+      );
     },
 
     totalEvaluationItems () {
@@ -842,7 +940,12 @@ export default {
         this.actionReports = (details.actionReports || details.action_reports || [])
           .map(report => ({
             indicator_id: report.indicator_id,
-            action: report.action || ''
+            action: report.action || '',
+            member_comments_suggestion: Array.isArray(report.member_comments_suggestion)
+              ? report.member_comments_suggestion.map(comment => String(comment?.text || comment || '').trim()).filter(Boolean)
+              : String(report.member_comments_suggestion || '').trim()
+                ? [String(report.member_comments_suggestion).trim()]
+                : []
           }))
           .filter(report => report.indicator_id !== undefined && report.indicator_id !== null);
         this.getResponseStats();
@@ -1044,7 +1147,7 @@ export default {
       const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
       let report = this.actionReports.find(item => String(item.indicator_id) === String(indicatorId));
       if (!report) {
-        report = { indicator_id: indicatorId, action: '' };
+        report = { indicator_id: indicatorId, action: '', member_comments_suggestion: [] };
         this.actionReports.push(report);
       }
       return report;
@@ -1055,9 +1158,34 @@ export default {
     },
 
     saveActionReport (indicator) {
+      if (!this.canEditActionReport) {
+        this.$q.notify({ type: 'warning', message: 'Only the assigned coordinator can edit or save the action.' });
+        return;
+      }
       const report = this.actionReportFor(indicator);
       this.$q.notify({ type: 'positive', message: `Action report for ${indicator.name} updated.` });
       return report;
+    },
+
+    addMemberComments (indicator) {
+      if (!this.isAssignedEvaluationMember) return;
+      this.memberCommentDialog = { show: true, indicator, text: '' };
+    },
+
+    saveMemberComment () {
+      if (!this.isAssignedEvaluationMember) return;
+      const comment = this.memberCommentDialog.text.trim();
+      const indicator = this.memberCommentDialog.indicator;
+      if (!comment || !indicator) return;
+
+      this.actionReportFor(indicator).member_comments_suggestion.push(comment);
+      this.memberCommentDialog = { show: false, indicator: null, text: '' };
+      this.$q.notify({ type: 'positive', message: 'Member comment added.' });
+    },
+
+    removeMemberComment (indicator, commentIndex) {
+      if (!this.isAssignedEvaluationMember) return;
+      this.actionReportFor(indicator).member_comments_suggestion.splice(commentIndex, 1);
     },
 
     requiredFieldValidation (value) {
@@ -1366,11 +1494,25 @@ export default {
   position: relative;
 }
 
+.action-report-scroll-area {
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+  position: relative;
+}
+
 .summary-sticky-legend {
   position: sticky;
   top: 0;
   z-index: 6;
   background: #fff;
+}
+
+.action-report-header {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .summary-table-card {
@@ -1590,6 +1732,10 @@ export default {
 .action-report-column {
   display: flex;
   flex-direction: column;
+  height: 100%;
+}
+.action-report-controls {
+  margin-top: auto;
 }
 .comments-panel,
 .action-input {
@@ -1606,6 +1752,31 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+.member-comments-list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.member-comment-card {
+  border-color: #dfe5ee;
+  border-radius: 6px;
+  background: #ffffff;
+}
+.member-comment-content {
+  position: relative;
+  padding-right: 40px !important;
+}
+.member-comment-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+.member-comment-text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
 }
 .comment-entry {
   padding: 8px 10px;
