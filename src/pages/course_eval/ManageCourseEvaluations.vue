@@ -21,7 +21,7 @@
           toggle-text-color="white"
           color="white"
           text-color="grey-7"
-          :options="viewOptions"
+          :options="visibleViewOptions"
         />
       </div>
       <q-btn
@@ -180,6 +180,7 @@
                 <q-tooltip>Open Detail Dashboard</q-tooltip>
               </q-btn>
               <q-btn
+                v-if="canManageEvaluations"
                 flat
                 round
                 dense
@@ -191,6 +192,7 @@
               </q-btn>
               <!-- q-btn for removing evaluation -->
               <q-btn
+                v-if="canManageEvaluations"
                 flat
                 round
                 dense
@@ -207,7 +209,7 @@
       </q-table>
 
       <!-- Card View -->
-      <q-card-section v-else-if="currentView === 'card'" class="bg-grey-1">
+      <q-card-section v-else-if="currentView === 'card' || (currentView === 'pipeline' && !canManageEvaluations)" class="bg-grey-1">
         <div v-if="filteredEvaluations.length" class="row q-col-gutter-md">
           <div
             v-for="evaluation in filteredEvaluations"
@@ -260,6 +262,7 @@
                   @click="navigateToDetails(evaluation._id)"
                 />
                 <q-btn
+                  v-if="canManageEvaluations"
                   flat
                   round
                   dense
@@ -288,7 +291,7 @@
       </q-card-section>
 
       <!-- Pipeline View -->
-      <q-card-section v-else class="bg-grey-1">
+      <q-card-section v-else-if="currentView === 'pipeline' && canManageEvaluations" class="bg-grey-1">
         <div class="row q-col-gutter-md items-stretch">
           <div
             v-for="lane in pipelineLanes"
@@ -604,6 +607,16 @@ export default {
       return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN');
     },
 
+    canManageEvaluations () {
+      return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN');
+    },
+
+    visibleViewOptions () {
+      return this.canManageEvaluations
+        ? this.viewOptions
+        : this.viewOptions.filter(option => option.value !== 'pipeline');
+    },
+
     filteredEvaluations () {
       const searchTxt = this.filter.toLowerCase().trim();
 
@@ -671,7 +684,7 @@ export default {
     },
 
     canDeleteEvaluation (evaluation) {
-      return String(evaluation?.status || '').toUpperCase() === 'DRAFT'
+      return this.canManageEvaluations && String(evaluation?.status || '').toUpperCase() === 'DRAFT';
     },
 
     getStatusColor (status) {
@@ -811,12 +824,20 @@ export default {
     },
 
     openEditModal (row) {
+      if (!this.canManageEvaluations) {
+        this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or ADMIN can edit evaluations.' });
+        return;
+      }
       this.form = { ...row };
       this.editing = true;
       this.dialog = true;
     },
 
     async confirmDeleteEvaluation (row) {
+      if (!this.canDeleteEvaluation(row)) {
+        this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or ADMIN can delete draft evaluations.' });
+        return;
+      }
       const confirm = await myDialog.confirm(this.$q, 'Confirm Deletion', 'Are you sure you want to delete this evaluation? This action cannot be undone.');
       if (!confirm) return;
 
@@ -878,6 +899,10 @@ export default {
     },
 
     async saveEvaluation () {
+      if (this.editing && !this.canManageEvaluations) {
+        this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or ADMIN can edit evaluations.' });
+        return;
+      }
       if (!this.editing && !this.canCreateEvaluation) {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or admin can create an evaluation.' });
         return;

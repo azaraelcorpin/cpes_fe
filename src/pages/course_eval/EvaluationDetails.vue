@@ -785,12 +785,13 @@ export default {
     canManageItems (indicator) {
       if (!this.isDraft) return false;
       const assignedRole = String(indicator?.assigned_role || '').trim().toUpperCase();
-        const editableRoles = ['CHAIRPERSON', 'COORDINATOR'];
+      const editableRoles = ['CHAIRPERSON', 'COORDINATOR'];
+      const isAdmin = this.currentUserRoles.includes('ADMIN');
+      const hasAssignedRole = assignedRole === 'COORDINATOR'
+        ? this.isAssignedCoordinator
+        : this.currentUserRoles.includes(assignedRole);
 
-        return editableRoles.includes(assignedRole) && (
-          this.currentUserRoles.includes(assignedRole) ||
-          this.currentUserRoles.includes('ADMIN')
-        );
+      return editableRoles.includes(assignedRole) && (hasAssignedRole || isAdmin);
     },
 
     //Remove member from evaluation members list
