@@ -291,16 +291,19 @@
 
                     <div class="col-12 col-md-4 action-report-column">
                       <div class="text-subtitle2 text-weight-bold q-mb-sm">Member Comments and Suggestion</div>
-                      <div v-if="actionReportFor(indicator).member_comments_suggestion.length" class="member-comments-list">
+                      <div v-if="commentsAndSuggestionsFor(indicator).length" class="member-comments-list">
                         <q-card
-                          v-for="(comment, commentIndex) in actionReportFor(indicator).member_comments_suggestion"
-                          :key="`${indicator._id}-member-comment-${commentIndex}`"
+                          v-for="(entry, commentIndex) in commentsAndSuggestionsFor(indicator)"
+                          :key="entry._id || entry.id || `${indicator._id}-member-comment-${commentIndex}`"
                           flat
                           bordered
                           class="member-comment-card"
                         >
                           <q-card-section class="member-comment-content q-pa-sm">
-                            <div class="text-body2 text-grey-8 member-comment-text">{{ comment }}</div>
+                            <div class="text-body2 text-grey-8 member-comment-text">{{ memberCommentText(entry) }}</div>
+                            <div v-if="memberCommentMetadata(entry)" class="text-caption text-grey-6 q-mt-xs">
+                              {{ memberCommentMetadata(entry) }}
+                            </div>
                             <q-btn
                               flat
                               round
@@ -309,15 +312,15 @@
                               icon="close"
                               color="negative"
                               class="member-comment-remove"
-                              :disable="!isAssignedEvaluationMember"
-                              @click="removeMemberComment(indicator, commentIndex)"
+                              :disable="!isAssignedEvaluationMember || !isLocalMemberComment(indicator, entry)"
+                              @click="removeMemberComment(indicator, entry)"
                             >
                               <q-tooltip>Remove comment</q-tooltip>
                             </q-btn>
                           </q-card-section>
                         </q-card>
                       </div>
-                      <div v-else class="text-caption text-grey-6 q-mb-md">No member comments yet.</div>
+                      <div v-else class="text-caption text-grey-6 q-mb-md">No member comments or suggestions yet.</div>
                       <div class="row justify-end action-report-controls">
                         <q-btn icon="add_comment" label="Add comments" unelevated color="secondary" no-caps :disable="!isAssignedEvaluationMember" @click="addMemberComments(indicator)" />
                       </div>
@@ -426,7 +429,7 @@
             </q-card-section>
             <q-card-actions align="right">
               <q-btn flat label="Cancel" v-close-popup />
-              <q-btn color="primary" icon="save" label="Save comment" type="submit" :disable="!memberCommentDialog.text.trim()" />
+              <q-btn color="primary" icon="save" label="Save comment" type="submit" :loading="memberCommentDialog.saving" :disable="memberCommentDialog.saving || !memberCommentDialog.text.trim()" />
             </q-card-actions>
           </q-form>
         </q-card>
@@ -590,7 +593,8 @@ export default {
       memberCommentDialog: {
         show: false,
         indicator: null,
-        text: ''
+        text: '',
+        saving: false
       },
       revisionDialog: {
         show: false,
@@ -1104,6 +1108,7 @@ export default {
         this.getResponseStats();
         this.getCommentsByEvaluationId();
         this.getSignificantlyLowestItemsByEvaluationId();
+        this.getCommentsAndSuggestionsByEvaluationId();
         this.fetchEvaluationMembers();
       } catch (error) {
         this.evaluation = null;
@@ -1233,6 +1238,31 @@ export default {
       }
     },
 
+    async getCommentsAndSuggestionsByEvaluationId() {
+      try {
+        const response = await api.getCommentsAndSuggestionsByEvaluationId(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load comments and suggestions.');
+        }
+        const commentsAndSuggestions = Array.isArray(response.data) ? response.data : [];
+        for (const indicator of this.evaluation.indicators) {
+          const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
+          const matchingGroup = commentsAndSuggestions.find(item =>
+            String(item.indicator_id) === String(indicatorId) &&
+            Array.isArray(item.comments_and_suggestions)
+          );
+          indicator.comments_and_suggestions = matchingGroup
+            ? matchingGroup.comments_and_suggestions
+            : commentsAndSuggestions.filter(item => String(item.indicator_id) === String(indicatorId));
+        }
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load comments and suggestions.'
+        });
+      }
+    },
+
     normalizeEvaluationDetails (details) {
       const indicators = details.indicators || details.evaluation_indicators || [];
       const evaluationItems = details.evaluation_items || details.evaluationItems || [];
@@ -1321,6 +1351,38 @@ export default {
       return Array.isArray(indicator?.lowest_rated_items) ? indicator.lowest_rated_items : [];
     },
 
+    commentsAndSuggestionsFor (indicator) {
+      const apiEntries = Array.isArray(indicator?.comments_and_suggestions)
+        ? indicator.comments_and_suggestions
+        : [];
+      const localEntries = this.actionReportFor(indicator).member_comments_suggestion;
+
+      return [...apiEntries, ...localEntries];
+    },
+
+    memberCommentText (entry) {
+      if (entry && typeof entry === 'object') {
+        return entry.comment || entry.suggestion || entry.text || entry.comments || '';
+      }
+      return String(entry || '');
+    },
+
+    memberCommentMetadata (entry) {
+      if (!entry || typeof entry !== 'object') return '';
+
+      const metadata = [entry.email, entry.role];
+      if (entry.created_at) {
+        const createdAt = new Date(entry.created_at);
+        metadata.push(Number.isNaN(createdAt.getTime()) ? entry.created_at : createdAt.toLocaleString());
+      }
+
+      return metadata.filter(Boolean).join(' · ');
+    },
+
+    isLocalMemberComment (indicator, entry) {
+      return this.actionReportFor(indicator).member_comments_suggestion.includes(entry);
+    },
+
     commentsForIndicator (indicator) {
       const source = indicator?.comments ?? indicator?.comment ?? [];
       const comments = Array.isArray(source) ? source : [source];
@@ -1389,23 +1451,53 @@ export default {
 
     addMemberComments (indicator) {
       if (!this.isAssignedEvaluationMember) return;
-      this.memberCommentDialog = { show: true, indicator, text: '' };
+      this.memberCommentDialog = { show: true, indicator, text: '', saving: false };
     },
 
-    saveMemberComment () {
+    async saveMemberComment () {
       if (!this.isAssignedEvaluationMember) return;
       const comment = this.memberCommentDialog.text.trim();
       const indicator = this.memberCommentDialog.indicator;
       if (!comment || !indicator) return;
 
-      this.actionReportFor(indicator).member_comments_suggestion.push(comment);
-      this.memberCommentDialog = { show: false, indicator: null, text: '' };
-      this.$q.notify({ type: 'positive', message: 'Member comment added.' });
+      const currentMember = (this.evaluation?.members || []).find(member =>
+        String(member.email || '').trim().toLowerCase() === this.currentUserEmail
+      );
+      const memberId = Number(currentMember?._id ?? currentMember?.id);
+
+      if (!Number.isInteger(memberId)) {
+        this.$q.notify({ type: 'negative', message: 'Could not find your action-member record for this evaluation.' });
+        return;
+      }
+
+      const payload = {
+        indicator_id: indicator.indicator_id || indicator._id || indicator.id,
+        member_id: memberId,
+        comment
+      };
+      // console.log('Payload for saving member comment:', payload);
+      this.memberCommentDialog.saving = true;
+      try {
+        const response = await api.createMemberCommentSuggestion(payload);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to save member comment.');
+        }
+
+        await this.getCommentsAndSuggestionsByEvaluationId();
+        this.memberCommentDialog = { show: false, indicator: null, text: '', saving: false };
+        this.$q.notify({ type: 'positive', message: 'Member comment added.' });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to save member comment.' });
+      } finally {
+        this.memberCommentDialog.saving = false;
+      }
     },
 
-    removeMemberComment (indicator, commentIndex) {
+    removeMemberComment (indicator, comment) {
       if (!this.isAssignedEvaluationMember) return;
-      this.actionReportFor(indicator).member_comments_suggestion.splice(commentIndex, 1);
+      const comments = this.actionReportFor(indicator).member_comments_suggestion;
+      const commentIndex = comments.indexOf(comment);
+      if (commentIndex !== -1) comments.splice(commentIndex, 1);
     },
 
     requiredFieldValidation (value) {
