@@ -2162,7 +2162,10 @@ export default {
   flex: 1 1 auto;
   flex-direction: column;
   gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
   margin-bottom: 16px;
+  padding-right: 4px;
 }
 .member-comment-card {
   border-color: #dfe5ee;
