@@ -1,5 +1,5 @@
 <template>
-  <q-page padding class="bg-grey-1">
+  <q-page padding class="bg-grey-1 evaluation-details-page" :class="{ 'has-action-signoff-bar': showActionReportSignoff }">
 
     <!-- 1. Keep Breadcrumbs Safe (Use fallback text if loading) -->
     <q-breadcrumbs class="q-mb-md text-caption">
@@ -252,11 +252,11 @@
                       <div class="lowest-rated-panel q-mb-md">
                         <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Significantly Lowest Rated Item/s</div>
                         <template v-if="lowestRatedItemsFor(indicator).length">
-                          <div v-for="item in lowestRatedItemsFor(indicator)" :key="item._id || item.item_id || item.name" class="row items-start no-wrap q-mb-xs">
+                          <div v-for="item in lowestRatedItemsFor(indicator)" :key="item._id " class="row items-start no-wrap q-mb-xs">
                             <q-icon name="priority_high" color="negative" size="18px" class="q-mr-xs q-mt-xs" />
                             <div class="text-body2 text-grey-8">
-                              {{ item.name || item.item_name || 'Unnamed item' }}
-                              <span class="text-caption text-negative text-weight-bold q-ml-xs">({{ formatSummaryMean(item.mean) }})</span>
+                              {{ item.name || 'Unnamed item' }}
+                              <span class="text-caption text-negative text-weight-bold q-ml-xs">({{ formatSummaryMean(item.mean) }}<template v-if="item.total_responses !== undefined">, n={{ item.total_responses }}</template>)</span>
                             </div>
                           </div>
                         </template>
@@ -432,6 +432,108 @@
         </q-card>
       </q-dialog>
 
+      <q-dialog v-model="revisionDialog.show">
+        <q-card style="width: 560px; max-width: 95vw">
+          <q-form @submit="submitRevisionRequest">
+            <q-card-section class="row items-center q-pb-sm">
+              <div class="text-h6">Request revisions</div>
+              <q-space />
+              <q-btn flat round dense icon="close" v-close-popup aria-label="Close" />
+            </q-card-section>
+            <q-card-section class="q-pt-sm">
+              <q-input
+                v-model="revisionDialog.comment"
+                type="textarea"
+                outlined
+                autofocus
+                label="What should be revised?"
+                :rules="[requiredFieldValidation]"
+              />
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Cancel" v-close-popup />
+              <q-btn color="secondary" icon="rate_review" label="Send request" type="submit" :disable="!revisionDialog.comment.trim()" />
+            </q-card-actions>
+          </q-form>
+        </q-card>
+      </q-dialog>
+
+      <div v-if="showActionReportSignoff" class="action-signoff-bar">
+        <div class="action-signoff-copy">
+          <template v-if="isAssignedCoordinator">
+            <div class="text-weight-bold">Coordinator sign-off</div>
+            <div class="text-caption text-grey-7">
+              {{ allActionMembersAgreed ? 'All assigned action members have agreed.' : 'Awaiting agreement from all assigned action members.' }}
+            </div>
+          </template>
+          <template v-else>
+            <div class="text-weight-bold">Reviewing as Action Member</div>
+            <div class="text-caption text-grey-7">Please review the report and signify your agreement.</div>
+          </template>
+        </div>
+
+        <div v-if="isAssignedCoordinator" class="action-member-approval-strip" aria-label="Member agreement status">
+          <div v-for="member in actionMembers" :key="member._id || member.email" class="action-member-approval">
+            <q-icon
+              name="person"
+              size="42px"
+              :color="memberApprovalStatusColor(member.status)"
+              :aria-label="`${member.fullname || member.email}: ${normalizedMemberStatus(member.status)}`"
+            >
+              <q-tooltip>
+                <div>{{ normalizedMemberStatus(member.status) }}</div>
+                <div v-if="normalizedMemberStatus(member.status) === 'REQUEST REVISION' && member.revision_comment">
+                  {{ member.revision_comment }}
+                </div>
+              </q-tooltip>
+            </q-icon>
+            <div class="text-caption text-weight-medium action-member-approval-name">
+              {{ member.fullname || member.email }}
+            </div>
+          </div>
+          <div v-if="!actionMembers.length" class="text-caption text-grey-6">No action members assigned</div>
+        </div>
+
+        <div v-if="isAssignedCoordinator" class="action-signoff-controls">
+          <div v-if="!allActionMembersAgreed" class="text-caption text-grey-7 action-signoff-warning">
+            Awaiting agreement from all assigned action members.
+          </div>
+          <q-btn
+            label="Submit Report"
+            icon="send"
+            unelevated
+            no-caps
+            :color="canSubmitActionReport ? 'primary' : 'grey-5'"
+            :text-color="canSubmitActionReport ? 'white' : 'grey-8'"
+            :disable="!canSubmitActionReport"
+            @click="submitActionReport"
+          />
+        </div>
+
+        <div v-else-if="hasCurrentMemberAgreed" class="action-signoff-controls">
+          <q-badge color="positive" text-color="white" class="q-px-md q-py-sm text-body2">
+            <q-icon name="check" class="q-mr-xs" /> Agreed
+          </q-badge>
+        </div>
+        <div v-else class="action-signoff-controls">
+          <q-btn
+            outline
+            no-caps
+            color="secondary"
+            icon="rate_review"
+            label="Request Revisions"
+            @click="openRevisionDialog"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            color="primary"
+            icon="check"
+            label="I Agree"
+            @click="agreeToActionReport"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- 3. RENDER LOADER SKELETON WHILE OBJECT IS NULL -->
@@ -469,6 +571,7 @@ export default {
 
       // Dynamic Component Data Pools
       actionReports: [],
+      actionReportStatus: 'DRAFT',
       responseStats: [],
       ratingScaleProfile: null,
 
@@ -488,6 +591,10 @@ export default {
         show: false,
         indicator: null,
         text: ''
+      },
+      revisionDialog: {
+        show: false,
+        comment: ''
       },
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
       memberForm: {
@@ -558,6 +665,49 @@ export default {
       return Boolean(this.currentUserEmail) && (this.evaluation?.members || []).some(member =>
         String(member.email || '').trim().toLowerCase() === this.currentUserEmail
       );
+    },
+
+    actionMembers () {
+      return (this.evaluation?.members || []).filter(member =>
+        String(member.role || '').trim().toUpperCase() === 'MEMBER' &&
+        String(member.email || '').trim()
+      );
+    },
+
+    isAssignedActionMember () {
+      return this.actionMembers.some(member =>
+        String(member.email).trim().toLowerCase() === this.currentUserEmail
+      );
+    },
+
+    currentActionMember () {
+      return this.actionMembers.find(member =>
+        String(member.email).trim().toLowerCase() === this.currentUserEmail
+      ) || null;
+    },
+
+    hasCurrentMemberAgreed () {
+      return this.normalizedMemberStatus(this.currentActionMember?.status) === 'AGREED';
+    },
+
+    allActionMembersAgreed () {
+      return this.actionMembers.length > 0 && this.actionMembers.every(member =>
+        this.normalizedMemberStatus(member.status) === 'AGREED'
+      );
+    },
+
+    agreedActionMemberCount () {
+      return this.actionMembers.filter(member => this.normalizedMemberStatus(member.status) === 'AGREED').length;
+    },
+
+    canSubmitActionReport () {
+      return this.isAssignedCoordinator && this.actionReportStatus !== 'APPROVED' && this.allActionMembersAgreed;
+    },
+
+    showActionReportSignoff () {
+      return this.activeTab === 'action-report' &&
+        this.actionReportStatus === 'DRAFT' &&
+        (this.isAssignedCoordinator || this.isAssignedActionMember);
     },
 
     totalEvaluationItems () {
@@ -938,6 +1088,8 @@ export default {
         if (!details) throw new Error('Evaluation details were not found.');
 
         this.evaluation = this.normalizeEvaluationDetails(details);
+        const actionReport = details.action_report || details.actionReport || {};
+        this.actionReportStatus = String(actionReport.status || details.action_report_status || details.actionReportStatus || 'DRAFT').toUpperCase();
         this.actionReports = (details.actionReports || details.action_reports || [])
           .map(report => ({
             indicator_id: report.indicator_id,
@@ -951,6 +1103,7 @@ export default {
           .filter(report => report.indicator_id !== undefined && report.indicator_id !== null);
         this.getResponseStats();
         this.getCommentsByEvaluationId();
+        this.getSignificantlyLowestItemsByEvaluationId();
         this.fetchEvaluationMembers();
       } catch (error) {
         this.evaluation = null;
@@ -1042,6 +1195,44 @@ export default {
       }
     },
 
+    async getSignificantlyLowestItemsByEvaluationId () {
+      try {
+        const response = await api.getSignificantlyLowestItemsByEvaluationId(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load significantly lowest rated items.');
+        }
+        const lowestRatedItems = Array.isArray(response.data) ? response.data : [];
+        for (const indicator of this.evaluation.indicators) {
+          const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
+          const matchingGroup = lowestRatedItems.find(item =>
+            String(item.indicator_id) === String(indicatorId)
+          );
+          const resultItems = matchingGroup
+            ? (Array.isArray(matchingGroup.items) ? matchingGroup.items : [])
+            : lowestRatedItems.filter(item => String(item.indicator_id) === String(indicatorId));
+
+          indicator.lowest_rated_items = resultItems.map((resultItem) => {
+            const itemId = resultItem.evaluation_item_id;
+            const evaluationItem = (indicator.evaluation_items || []).find(item =>
+              String(item.item_id || item._id || item.id) === String(itemId)
+            );
+
+            return {
+              ...resultItem,
+              _id: itemId || evaluationItem?._id,
+              name: resultItem.name || resultItem.item_name || evaluationItem?.name,
+              mean: resultItem.mean ?? resultItem.average_rating ?? evaluationItem?.mean
+            };
+          });
+        }
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load significantly lowest rated items.'
+        });
+      }
+    },
+
     normalizeEvaluationDetails (details) {
       const indicators = details.indicators || details.evaluation_indicators || [];
       const evaluationItems = details.evaluation_items || details.evaluationItems || [];
@@ -1087,19 +1278,47 @@ export default {
       return numeric.toFixed(2);
     },
 
+    normalizedMemberStatus (status) {
+      return String(status || 'PENDING').trim().replace(/\s+/g, ' ').toUpperCase();
+    },
+
+    memberApprovalStatusColor (status) {
+      const normalizedStatus = this.normalizedMemberStatus(status);
+      if (normalizedStatus === 'AGREED') return 'positive';
+      if (normalizedStatus === 'REQUEST REVISION') return 'negative';
+      return 'grey-6';
+    },
+
+    agreeToActionReport () {
+      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT') return;
+      this.currentActionMember.status = 'AGREED';
+      this.$q.notify({ type: 'positive', message: 'Your agreement has been recorded.' });
+    },
+
+    openRevisionDialog () {
+      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT') return;
+      this.revisionDialog = { show: true, comment: '' };
+    },
+
+    submitRevisionRequest () {
+      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT') return;
+      const comment = this.revisionDialog.comment.trim();
+      if (!comment) return;
+
+      this.currentActionMember.status = 'REQUEST REVISION';
+      this.currentActionMember.revision_comment = comment;
+      this.revisionDialog = { show: false, comment: '' };
+      this.$q.notify({ type: 'info', message: 'Revision request recorded.' });
+    },
+
+    submitActionReport () {
+      if (!this.canSubmitActionReport) return;
+      this.actionReportStatus = 'SUBMITTED';
+      this.$q.notify({ type: 'positive', message: 'Action report submitted.' });
+    },
+
     lowestRatedItemsFor (indicator) {
-      const items = Array.isArray(indicator?.evaluation_items) ? indicator.evaluation_items : [];
-      const ratedItems = items
-        .map((item) => {
-          const mean = Number(item.mean ?? item.average_rating ?? item.average ?? item.rating ?? item.value);
-          return Number.isFinite(mean) ? { ...item, mean } : null;
-        })
-        .filter(Boolean);
-
-      if (!ratedItems.length) return [];
-
-      const lowestMean = Math.min(...ratedItems.map(item => item.mean));
-      return ratedItems.filter(item => Math.abs(item.mean - lowestMean) < 0.0001);
+      return Array.isArray(indicator?.lowest_rated_items) ? indicator.lowest_rated_items : [];
     },
 
     commentsForIndicator (indicator) {
@@ -1514,6 +1733,98 @@ export default {
   z-index: 6;
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.evaluation-details-page.has-action-signoff-bar {
+  padding-bottom: 132px;
+}
+
+.action-signoff-bar {
+  position: fixed;
+  z-index: 6000;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 84px;
+  padding: 14px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+  box-shadow: 0 -4px 18px rgba(15, 23, 42, 0.12);
+}
+
+.action-signoff-copy {
+  flex: 0 0 auto;
+  min-width: 190px;
+}
+
+.action-member-approval-strip {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 4px;
+}
+
+.action-member-approval {
+  display: flex;
+  flex: 0 0 76px;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.action-member-approval-name {
+  width: 100%;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+}
+
+.action-signoff-controls {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.action-signoff-warning {
+  max-width: 220px;
+  text-align: right;
+}
+
+@media (max-width: 600px) {
+  .evaluation-details-page.has-action-signoff-bar {
+    padding-bottom: 220px;
+  }
+
+  .action-signoff-bar {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px 16px;
+  }
+
+  .action-signoff-controls {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .action-member-approval-strip {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 66px;
+  }
+
+  .action-signoff-warning {
+    max-width: none;
+    text-align: left;
+  }
 }
 
 .summary-table-card {
