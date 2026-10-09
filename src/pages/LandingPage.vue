@@ -75,10 +75,14 @@
 
         <q-expansion-item label="Developer access" icon="terminal" dense class="developer-access">
           <div class="developer-grid">
-            <q-btn outline dense label="HR" @click="test('hr@msugensan.edu.ph')" />
-            <q-btn outline dense label="Admin" @click="test('admin@msugensan.edu.ph')" />
-            <q-btn outline dense label="Office staff" @click="test('office_staff@msugensan.edu.ph')" />
-            <q-btn outline dense label="PMT" @click="test('pmt@msugensan.edu.ph')" />
+
+            <q-btn outline dense label="Student" @click="test('denierich.falalimpa@msugensan.edu.ph', 'student')" />
+            <q-btn outline dense label="Coordinator" @click="test('elena.reyes@msugensan.edu.ph', 'faculty')" />
+            <q-btn outline dense label="Member" @click="test('angela.gonzales@msugensan.edu.ph', 'faculty')" />
+            <q-btn outline dense label="Chairperson" @click="test('argene.arsenal@msugensan.edu.ph', 'chairperson')" />
+            <q-btn outline dense label="Dean" @click="test('nsgunay@msugensan.edu.ph', 'dean')" />
+            <q-btn outline dense label="CCSID" @click="test('ccsid@msugensan.edu.ph', 'admin')" />
+            <q-btn outline dense label="VCAA" @click="test('vcaa@msugensan.edu.ph', 'admin')" />
           </div>
         </q-expansion-item>
       </div>
@@ -174,16 +178,17 @@ export default{
                 }
               }
           };
-          const test = async (email) => {
+          const test = async (email, role) => {
             // This callback will be triggered when the user selects or login to
             // his Google account from the popup
+
             loading.value=true;
+
             let SID = {};
-            SID.userEmail = email;
-            SID.name = email.replaceAll('@msugensan.edu.ph','');
-            SID.picture = null;
-            console.log(!SID.userEmail.includes('@msugensan.edu.ph'))
-            if(!SID.userEmail.includes('@msugensan.edu.ph'))
+            SID.email = email;
+            SID.role = role;
+            console.log(SID.email)
+            if(!SID.email.includes('@msugensan.edu.ph'))
               {
                 myDialog.negative($q,'Unauthorized','Account Not Found')
                 loading.value=false;
@@ -197,23 +202,27 @@ export default{
                     throw new Error(response.error.response.data.message);
                     throw new Error(response.error.message);
                   }
-                  if(response.status === 'OK'){
-                      let sid=response.session.sessionId;
-                      SID.sid=sid
-                      cookies.set('_UID_',JSON.stringify(SID),'1d');
+                  if(response.success){
+                      let sid=response.data;
+
+                      cookies.set('_UID_',JSON.stringify(sid),'1d');
                       // put in localStorage the userRoles from response ↓↓↓
                       // localStorage.clear();
                       // localStorage.setItem("userRoles",JSON.stringify('[DEV]'))
 
                       localStorage.clear();
-                      localStorage.setItem("userRoles",JSON.stringify(response.session.ROLES))
-                      let tmp = JSON.stringify(response.session.officesAndRoles);
-                      if(tmp)
-                        localStorage.setItem("officesAndRoles",tmp)
+                      localStorage.setItem("userRoles",JSON.stringify(sid.role))
+                      if(sid.role === 'faculty')
+                      localStorage.setItem("userRoles",JSON.stringify('FACULTY'))
+                      if(sid.dept_code)
+                        localStorage.setItem("dept_code",JSON.stringify(sid.dept_code))
+                      if(sid.college_code)
+                        localStorage.setItem("college_code",JSON.stringify(sid.college_code))
+                      localStorage.setItem("dept_code",JSON.stringify('ABM'))
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;
-                      window.location.reload();
+                      // window.location.reload();
                 } catch (error) {
                   console.log('reso',error)
                   loading.value=false;
@@ -221,7 +230,7 @@ export default{
 
                 }
               }
-          }
+          };
           const role = ref('admin');
 
     return{

@@ -70,7 +70,7 @@
 						<q-input v-model="form.fullname" label="Full name" outlined :rules="[required]" />
 						<q-input v-model="form.email" type="email" label="Email address" outlined :rules="[required]" />
 						<!-- disabled for non-admin users -->
-						<q-select :disable="$q.localStorage.getItem('userRoles')!=='admin'" v-model="form.role" :options="roleOptions" label="Role" outlined :rules="[required]" />
+						<q-select :disable="!isAdmin" v-model="form.role" :options="roleOptions" label="Role" outlined :rules="[required]" />
 						<q-toggle v-model="form.status" label="ACTIVE user" />
                         <q-toggle :disable="!isAdmin" v-model="form.is_primary" label="Primary User"  />
 					</q-card-section>

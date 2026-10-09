@@ -241,7 +241,7 @@
             <q-separator />
 
             <q-list separator>
-              <q-item v-for="indicator in evaluation.indicators" :key="indicator._id" class="q-py-lg">
+              <q-item v-for="indicator in actionReportIndicators" :key="indicator._id" class="q-py-lg">
                 <q-item-section>
                   <div class="text-subtitle2 text-weight-bold text-grey-9 q-mb-md">
                     {{ indicator.indicator_name || indicator.name || 'Indicator' }}
@@ -312,7 +312,7 @@
                               icon="close"
                               color="negative"
                               class="member-comment-remove"
-                              :disable="!isAssignedEvaluationMember || !isLocalMemberComment(indicator, entry)"
+                              :disable="!canDeleteMemberComment(entry) || actionReportStatus !== 'DRAFT'"
                               @click="removeMemberComment(indicator, entry)"
                             >
                               <q-tooltip>Remove comment</q-tooltip>
@@ -322,7 +322,7 @@
                       </div>
                       <div v-else class="text-caption text-grey-6 q-mb-md">No member comments or suggestions yet.</div>
                       <div class="row justify-end action-report-controls">
-                        <q-btn icon="add_comment" label="Add comments" unelevated color="secondary" no-caps :disable="!isAssignedEvaluationMember" @click="addMemberComments(indicator)" />
+                        <q-btn icon="add_comment" label="Add comments" unelevated color="secondary" no-caps :disable="!isAssignedEvaluationMember || actionReportStatus !== 'DRAFT'" @click="addMemberComments(indicator)" />
                       </div>
                     </div>
                   </div>
@@ -435,32 +435,6 @@
         </q-card>
       </q-dialog>
 
-      <q-dialog v-model="revisionDialog.show">
-        <q-card style="width: 560px; max-width: 95vw">
-          <q-form @submit="submitRevisionRequest">
-            <q-card-section class="row items-center q-pb-sm">
-              <div class="text-h6">Request revisions</div>
-              <q-space />
-              <q-btn flat round dense icon="close" v-close-popup aria-label="Close" />
-            </q-card-section>
-            <q-card-section class="q-pt-sm">
-              <q-input
-                v-model="revisionDialog.comment"
-                type="textarea"
-                outlined
-                autofocus
-                label="What should be revised?"
-                :rules="[requiredFieldValidation]"
-              />
-            </q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Cancel" v-close-popup />
-              <q-btn color="secondary" icon="rate_review" label="Send request" type="submit" :disable="!revisionDialog.comment.trim()" />
-            </q-card-actions>
-          </q-form>
-        </q-card>
-      </q-dialog>
-
       <div v-if="showActionReportSignoff" class="action-signoff-bar">
         <div class="action-signoff-copy">
           <template v-if="isAssignedCoordinator">
@@ -517,15 +491,29 @@
           <q-badge color="positive" text-color="white" class="q-px-md q-py-sm text-body2">
             <q-icon name="check" class="q-mr-xs" /> Agreed
           </q-badge>
-        </div>
-        <div v-else class="action-signoff-controls">
           <q-btn
+            v-if="normalizedMemberStatus(currentActionMember?.status) !== 'PENDING'"
             outline
             no-caps
             color="secondary"
             icon="rate_review"
             label="Request Revisions"
-            @click="openRevisionDialog"
+            :loading="signoffSaving"
+            :disable="signoffSaving"
+            @click="requestRevision"
+          />
+        </div>
+        <div v-else class="action-signoff-controls">
+          <q-btn
+            v-if="normalizedMemberStatus(currentActionMember?.status) !== 'PENDING'"
+            outline
+            no-caps
+            color="secondary"
+            icon="rate_review"
+            label="Request Revisions"
+            :loading="signoffSaving"
+            :disable="signoffSaving"
+            @click="requestRevision"
           />
           <q-btn
             unelevated
@@ -533,6 +521,8 @@
             color="primary"
             icon="check"
             label="I Agree"
+            :loading="signoffSaving"
+            :disable="signoffSaving"
             @click="agreeToActionReport"
           />
         </div>
@@ -596,10 +586,7 @@ export default {
         text: '',
         saving: false
       },
-      revisionDialog: {
-        show: false,
-        comment: ''
-      },
+      signoffSaving: false,
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
       memberForm: {
         facultyId: null,
@@ -640,7 +627,7 @@ export default {
     },
 
     canEditActionReport () {
-      return (this.isDraft || this.evaluation?.status === 'CLOSED') && this.isAssignedCoordinator;
+      return this.actionReportStatus === 'DRAFT' && this.isAssignedCoordinator;
     },
 
     currentUserEmail () {
@@ -747,6 +734,12 @@ export default {
 
     canAssignMembers () {
       return this.isDraft && (this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN'));
+    },
+
+    actionReportIndicators () {
+      return (this.evaluation?.indicators || []).filter(indicator =>
+        String(indicator.indicator_name || '').trim().toLowerCase() !== 'overall'
+      );
     },
 
     ratingScaleLegend () {
@@ -1094,20 +1087,12 @@ export default {
         this.evaluation = this.normalizeEvaluationDetails(details);
         const actionReport = details.action_report || details.actionReport || {};
         this.actionReportStatus = String(actionReport.status || details.action_report_status || details.actionReportStatus || 'DRAFT').toUpperCase();
-        this.actionReports = (details.actionReports || details.action_reports || [])
-          .map(report => ({
-            indicator_id: report.indicator_id,
-            action: report.action || '',
-            member_comments_suggestion: Array.isArray(report.member_comments_suggestion)
-              ? report.member_comments_suggestion.map(comment => String(comment?.text || comment || '').trim()).filter(Boolean)
-              : String(report.member_comments_suggestion || '').trim()
-                ? [String(report.member_comments_suggestion).trim()]
-                : []
-          }))
-          .filter(report => report.indicator_id !== undefined && report.indicator_id !== null);
+        this.actionReports = [];
+        await this.fetchActionReportStatus();
         this.getResponseStats();
         this.getCommentsByEvaluationId();
         this.getSignificantlyLowestItemsByEvaluationId();
+        this.getActionReportIndicatorsByEvaluationId();
         this.getCommentsAndSuggestionsByEvaluationId();
         this.fetchEvaluationMembers();
       } catch (error) {
@@ -1118,6 +1103,24 @@ export default {
         });
       } finally {
         this.loading = false;
+      }
+    },
+
+    async fetchActionReportStatus () {
+      try {
+        const response = await api.getActionReportStatusByEvaluationId(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load action report status.');
+        }
+
+        const report = Array.isArray(response.data) ? response.data[0] : response.data;
+        const status = report?.status || report?.action_report_status || report?.actionReportStatus || report?.action_report?.status;
+        if (status) this.actionReportStatus = String(status).trim().toUpperCase();
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load action report status.'
+        });
       }
     },
 
@@ -1238,6 +1241,29 @@ export default {
       }
     },
 
+    async getActionReportIndicatorsByEvaluationId () {
+      try {
+        const response = await api.getActionReportIndicatorsByEvaluationId(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load action report indicators.');
+        }
+
+        const reports = Array.isArray(response.data) ? response.data : [];
+        this.actionReports = reports
+          .filter(report => report.indicator_id !== undefined && report.indicator_id !== null)
+          .map(report => ({
+            indicator_id: report.indicator_id,
+            action: report.action || ''
+          }));
+      } catch (error) {
+        this.actionReports = [];
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load action report indicators.'
+        });
+      }
+    },
+
     async getCommentsAndSuggestionsByEvaluationId() {
       try {
         const response = await api.getCommentsAndSuggestionsByEvaluationId(this.evaluation._id);
@@ -1319,26 +1345,43 @@ export default {
       return 'grey-6';
     },
 
-    agreeToActionReport () {
-      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT') return;
-      this.currentActionMember.status = 'AGREED';
-      this.$q.notify({ type: 'positive', message: 'Your agreement has been recorded.' });
+    async agreeToActionReport () {
+      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT' || this.signoffSaving) return;
+
+      this.signoffSaving = true;
+      try {
+        const response = await api.agreeToActionReport(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to record your agreement.');
+        }
+
+        this.currentActionMember.status = 'AGREED';
+        this.$q.notify({ type: 'positive', message: 'Your agreement has been recorded.' });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to record your agreement.' });
+      } finally {
+        this.signoffSaving = false;
+      }
     },
 
-    openRevisionDialog () {
-      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT') return;
-      this.revisionDialog = { show: true, comment: '' };
-    },
+    async requestRevision () {
+      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT' || this.signoffSaving) return;
 
-    submitRevisionRequest () {
-      if (!this.isAssignedActionMember || this.actionReportStatus !== 'DRAFT') return;
-      const comment = this.revisionDialog.comment.trim();
-      if (!comment) return;
+      this.signoffSaving = true;
+      try {
+        const response = await api.requestRevisionToActionReport(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to request revisions.');
+        }
 
-      this.currentActionMember.status = 'REQUEST REVISION';
-      this.currentActionMember.revision_comment = comment;
-      this.revisionDialog = { show: false, comment: '' };
-      this.$q.notify({ type: 'info', message: 'Revision request recorded.' });
+        this.currentActionMember.status = 'PENDING';
+        delete this.currentActionMember.revision_comment;
+        this.$q.notify({ type: 'info', message: 'Revision request recorded.' });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to request revisions.' });
+      } finally {
+        this.signoffSaving = false;
+      }
     },
 
     submitActionReport () {
@@ -1352,12 +1395,9 @@ export default {
     },
 
     commentsAndSuggestionsFor (indicator) {
-      const apiEntries = Array.isArray(indicator?.comments_and_suggestions)
+      return Array.isArray(indicator?.comments_and_suggestions)
         ? indicator.comments_and_suggestions
         : [];
-      const localEntries = this.actionReportFor(indicator).member_comments_suggestion;
-
-      return [...apiEntries, ...localEntries];
     },
 
     memberCommentText (entry) {
@@ -1379,8 +1419,20 @@ export default {
       return metadata.filter(Boolean).join(' · ');
     },
 
-    isLocalMemberComment (indicator, entry) {
-      return this.actionReportFor(indicator).member_comments_suggestion.includes(entry);
+    canDeleteMemberComment (entry) {
+      if (!entry || typeof entry !== 'object') return false;
+
+      const authorEmail = String(entry.email || entry.member_email || entry.memberEmail || entry.member?.email || '').trim().toLowerCase();
+      const authorId = entry.member_id ?? entry.memberId ?? entry.member?._id ?? entry.member?.id;
+      const currentMember = (this.evaluation?.members || []).find(member =>
+        String(member.email || '').trim().toLowerCase() === this.currentUserEmail
+      );
+      const currentMemberId = currentMember?._id ?? currentMember?.id;
+
+      return Boolean(
+        (authorEmail && authorEmail === this.currentUserEmail) ||
+        (authorId !== undefined && authorId !== null && currentMemberId !== undefined && currentMemberId !== null && String(authorId) === String(currentMemberId))
+      );
     },
 
     commentsForIndicator (indicator) {
@@ -1429,33 +1481,48 @@ export default {
       const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
       let report = this.actionReports.find(item => String(item.indicator_id) === String(indicatorId));
       if (!report) {
-        report = { indicator_id: indicatorId, action: '', member_comments_suggestion: [] };
+        report = { indicator_id: indicatorId, action: '' };
         this.actionReports.push(report);
       }
       return report;
     },
 
     updateActionReport (indicator, field, value) {
+      if (!this.canEditActionReport) return;
       this.actionReportFor(indicator)[field] = value;
     },
-
-    saveActionReport (indicator) {
+////
+    async saveActionReport (indicator) {
       if (!this.canEditActionReport) {
         this.$q.notify({ type: 'warning', message: 'Only the assigned coordinator can edit or save the action.' });
         return;
       }
+
       const report = this.actionReportFor(indicator);
-      this.$q.notify({ type: 'positive', message: `Action report for ${indicator.name} updated.` });
-      return report;
+      try {
+        const response = await api.postActionReportIndicator({
+          evaluation_id: this.evaluation._id,
+          indicator_id: report.indicator_id,
+          action: report.action
+        });
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to save action report.');
+        }
+
+        this.$q.notify({ type: 'positive', message: `Action report for ${indicator.indicator_name} updated.` });
+        return report;
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to save action report.' });
+      }
     },
 
     addMemberComments (indicator) {
-      if (!this.isAssignedEvaluationMember) return;
+      if (!this.isAssignedEvaluationMember || this.actionReportStatus !== 'DRAFT') return;
       this.memberCommentDialog = { show: true, indicator, text: '', saving: false };
     },
 
     async saveMemberComment () {
-      if (!this.isAssignedEvaluationMember) return;
+      if (!this.isAssignedEvaluationMember || this.actionReportStatus !== 'DRAFT') return;
       const comment = this.memberCommentDialog.text.trim();
       const indicator = this.memberCommentDialog.indicator;
       if (!comment || !indicator) return;
@@ -1493,11 +1560,24 @@ export default {
       }
     },
 
-    removeMemberComment (indicator, comment) {
-      if (!this.isAssignedEvaluationMember) return;
-      const comments = this.actionReportFor(indicator).member_comments_suggestion;
-      const commentIndex = comments.indexOf(comment);
-      if (commentIndex !== -1) comments.splice(commentIndex, 1);
+    async removeMemberComment (indicator, comment) {
+      if (this.actionReportStatus !== 'DRAFT' || !this.canDeleteMemberComment(comment)) return;
+
+      const confirmed = await myDialog.confirm(this.$q, 'Confirm Comment Removal', 'Are you sure you want to remove this comment?');
+      if (!confirmed) return;
+
+      try {
+        const response = await api.deleteMemberCommentSuggestion(comment._id || comment.id || comment.comment_id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to delete member comment.');
+        }
+        this.$q.notify({ type: 'positive', message: 'Member comment removed.' });
+        const apiComments = indicator.comments_and_suggestions || [];
+        const apiCommentIndex = apiComments.indexOf(comment);
+        if (apiCommentIndex !== -1) apiComments.splice(apiCommentIndex, 1);
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to delete member comment.' });
+      }
     },
 
     requiredFieldValidation (value) {

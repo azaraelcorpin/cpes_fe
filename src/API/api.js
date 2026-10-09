@@ -889,6 +889,26 @@ export default {
       }
     },
 
+    //deleteMemberCommentSuggestion with payload _id
+    async deleteMemberCommentSuggestion(_id){
+      var path = '/api/course-evaluation/member-comment-suggestions/delete'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = { _id }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('deleteMemberCommentSuggestion Error');
+          return { error: response };
+        }
+      } catch (error) { 
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },    
+
     //createMemberCommentSuggestion with payload indicator_id, evaluation_id, member_id, comment
     async createMemberCommentSuggestion(payload){
       var path = '/api/course-evaluation/member-comment-suggestions/create'
@@ -900,6 +920,113 @@ export default {
           return response.data;
         } else {
           console.log('createMemberCommentSuggestion Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //postActionReportIndicator
+    async postActionReportIndicator(payload){
+      var path = '/api/course-evaluation/action-report-indicators/post'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, payload, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('postActionReportIndicator Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //getActionReportIndicatorsByEvaluationId
+    async getActionReportIndicatorsByEvaluationId(evaluationId){
+      var path = '/api/course-evaluation/action-report-indicators/getByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getActionReportIndicatorsByEvaluationId Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //requestRevisionToActionReport
+    async requestRevisionToActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-members/requestRevisionToActionReport'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('requestRevisionToActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //agreeToActionReport
+    async agreeToActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-members/agreeToActionReport'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('agreeToActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //getActionReportStatusByEvaluationId
+    async getActionReportStatusByEvaluationId(evaluationId){
+      var path = '/api/course-evaluation/action-reports/getById'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getActionReportStatusByEvaluationId Error');
           return { error: response };
         }
       } catch (error) {
