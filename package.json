@@ -22,6 +22,7 @@
     "lodash": "^4.17.21",
     "pinia": "^2.0.11",
     "quasar": "^2.12.7",
+    "socket.io-client": "^4.8.4",
     "sweetalert2": "^11.7.29",
     "vue": "^3.0.0",
     "vue-cookies-reactive": "^2.1.1",

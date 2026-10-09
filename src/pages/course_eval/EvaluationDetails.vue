@@ -37,6 +37,32 @@
             <q-badge rounded :color="getStatusColor(evaluation.status)" class="q-px-md q-py-xs text-weight-bold">
               {{ evaluation.status }}
             </q-badge>
+            <q-btn-dropdown
+              v-if="isChairperson"
+              dense
+              outline
+              no-caps
+              icon="edit"
+              label="Set status"
+              :loading="updatingEvaluationStatus"
+              :disable="updatingEvaluationStatus"
+            >
+              <q-list>
+                <q-item
+                  v-for="status in evaluationStatusOptions"
+                  :key="status"
+                  v-close-popup
+                  clickable
+                  :disable="evaluation.status === status"
+                  @click="updateEvaluationStatus(status)"
+                >
+                  <q-item-section>{{ status }}</q-item-section>
+                  <q-item-section v-if="evaluation.status === status" side>
+                    <q-icon name="check" color="primary" />
+                  </q-item-section>
+                </q-item>
+              </q-list>
+            </q-btn-dropdown>
           </div>
         </q-card-section>
       </q-card>
@@ -230,7 +256,10 @@
         </q-tab-panel>
 
         <q-tab-panel name="action-report" class="q-pa-none">
-          <div class="action-report-scroll-area">
+          <div v-if="!evaluationIsClosed" class="q-pt-xl text-negative text-center">
+            Action report is available only when the evaluation is CLOSED.
+          </div>
+          <div v-else class="action-report-scroll-area">
           <q-card flat bordered class="bg-white">
             <q-card-section class="action-report-header q-pb-xl">
               <div>
@@ -437,19 +466,25 @@
 
       <div v-if="showActionReportSignoff" class="action-signoff-bar">
         <div class="action-signoff-copy">
-          <template v-if="isAssignedCoordinator">
-            <div class="text-weight-bold">Coordinator sign-off</div>
-            <div class="text-caption text-grey-7">
-              {{ allActionMembersAgreed ? 'All assigned action members have agreed.' : 'Awaiting agreement from all assigned action members.' }}
-            </div>
+          <template v-if="actionReportApprovalLabel">
+            <div class="text-weight-bold">Action Report Review</div>
+            <div class="text-caption text-grey-7">Your role is ready to review this report.</div>
           </template>
-          <template v-else>
+          <template v-if="isAssignedCoordinator">
+            <template v-if="!actionReportApprovalLabel">
+              <div class="text-weight-bold">Coordinator sign-off</div>
+              <div class="text-caption text-grey-7">
+                {{ allActionMembersAgreed ? 'All assigned action members have agreed.' : 'Awaiting agreement from all assigned action members.' }}
+              </div>
+            </template>
+          </template>
+          <template v-else-if="!actionReportApprovalLabel">
             <div class="text-weight-bold">Reviewing as Action Member</div>
             <div class="text-caption text-grey-7">Please review the report and signify your agreement.</div>
           </template>
         </div>
 
-        <div v-if="isAssignedCoordinator" class="action-member-approval-strip" aria-label="Member agreement status">
+        <div v-if="isAssignedCoordinator && !actionReportApprovalLabel" class="action-member-approval-strip" aria-label="Member agreement status">
           <div v-for="member in actionMembers" :key="member._id || member.email" class="action-member-approval">
             <q-icon
               name="person"
@@ -471,7 +506,25 @@
           <div v-if="!actionMembers.length" class="text-caption text-grey-6">No action members assigned</div>
         </div>
 
-        <div v-if="isAssignedCoordinator" class="action-signoff-controls">
+        <div v-if="actionReportApprovalLabel" class="action-signoff-controls">
+          <q-btn
+            disable
+            unelevated
+            no-caps
+            color="primary"
+            icon="fact_check"
+            :label="actionReportApprovalLabel"
+          />
+          <q-btn
+            disable
+            outline
+            no-caps
+            color="secondary"
+            icon="rate_review"
+            label="Request Changes"
+          />
+        </div>
+        <div v-else-if="isAssignedCoordinator" class="action-signoff-controls">
           <div v-if="!allActionMembersAgreed" class="text-caption text-grey-7 action-signoff-warning">
             Awaiting agreement from all assigned action members.
           </div>
@@ -482,7 +535,8 @@
             no-caps
             :color="canSubmitActionReport ? 'primary' : 'grey-5'"
             :text-color="canSubmitActionReport ? 'white' : 'grey-8'"
-            :disable="!canSubmitActionReport"
+            :loading="signoffSaving"
+            :disable="!canSubmitActionReport || signoffSaving"
             @click="submitActionReport"
           />
         </div>
@@ -547,6 +601,8 @@ import api from 'src/API/api.js'
 import sampleFacultyList from 'src/pages/course_eval/sampleFaculties.json'
 import myDialog from 'src/plugins/myDialog';
 import { useCookies } from 'vue3-cookies'
+import { io } from 'socket.io-client'
+import { markRaw } from 'vue'
 
 export default {
   name: 'EvaluationDetailsWorkspace',
@@ -559,6 +615,8 @@ export default {
       evaluation: null,
       loading: false,
       saving: false,
+      updatingEvaluationStatus: false,
+      evaluationStatusOptions: ['DRAFT', 'ACTIVE', 'CLOSED'],
       activeTab: this.$route.query?.tab || 'details',
       fetchSummaryStatus: { loading: false, error: null },
 
@@ -586,6 +644,8 @@ export default {
         text: '',
         saving: false
       },
+      actionReportSocket: null,
+      actionReportSocketHandlers: null,
       signoffSaving: false,
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
       memberForm: {
@@ -626,8 +686,16 @@ export default {
       return this.evaluation?.status === 'DRAFT';
     },
 
+    evaluationIsClosed () {
+      return String(this.evaluation?.status || '').trim().toUpperCase() === 'CLOSED';
+    },
+
     canEditActionReport () {
       return this.actionReportStatus === 'DRAFT' && this.isAssignedCoordinator;
+    },
+
+    isChairperson () {
+      return this.currentUserRoles.includes('CHAIRPERSON');
     },
 
     currentUserEmail () {
@@ -692,13 +760,24 @@ export default {
     },
 
     canSubmitActionReport () {
-      return this.isAssignedCoordinator && this.actionReportStatus !== 'APPROVED' && this.allActionMembersAgreed;
+      return this.isAssignedCoordinator && this.actionReportStatus === 'DRAFT' && this.allActionMembersAgreed;
+    },
+
+    actionReportApprovalLabel () {
+      if (!this.evaluationIsClosed || ['DRAFT', 'APPROVED'].includes(this.actionReportStatus)) return '';
+
+      if (this.currentUserRoles.includes('CHAIRPERSON')) return 'REVIEWED';
+      if (this.currentUserRoles.includes('DEAN')) return 'ENDORSE';
+      if (this.currentUserRoles.includes('CCSID')) return 'CHECKED';
+      if (this.currentUserRoles.includes('VCAA')) return 'APPROVED';
+      return '';
     },
 
     showActionReportSignoff () {
-      return this.activeTab === 'action-report' &&
-        this.actionReportStatus === 'DRAFT' &&
-        (this.isAssignedCoordinator || this.isAssignedActionMember);
+      return this.activeTab === 'action-report' && (
+        (this.actionReportStatus === 'DRAFT' && (this.isAssignedCoordinator || this.isAssignedActionMember)) ||
+        Boolean(this.actionReportApprovalLabel)
+      );
     },
 
     totalEvaluationItems () {
@@ -916,10 +995,110 @@ export default {
 
   async mounted () {
     await this.fetchDeepEvaluationStructure();
+    this.connectActionReportSocket();
     this.fetchFacultiesWithDepartments();
   },
 
+  beforeUnmount () {
+    this.disconnectActionReportSocket();
+  },
+
   methods: {
+    async updateEvaluationStatus (status) {
+      if (!this.isChairperson || this.updatingEvaluationStatus || !this.evaluation) return;
+
+      const nextStatus = String(status || '').trim().toUpperCase();
+      if (!this.evaluationStatusOptions.includes(nextStatus) || nextStatus === this.evaluation.status) return;
+
+      const confirmed = await myDialog.confirm(
+        this.$q,
+        'Confirm Status Change',
+        `Change this evaluation's status to ${nextStatus}?`
+      );
+      if (!confirmed) return;
+
+      this.updatingEvaluationStatus = true;
+      const statusPayload = {
+        _id: this.evaluation._id??'',
+        status: nextStatus
+      }
+      try {
+        const response = await api.updateEvaluation(statusPayload);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to update evaluation status.');
+        }
+
+        const updatedRecord = Array.isArray(response.data) ? response.data[0] : response.data;
+        this.evaluation = { ...this.evaluation, ...updatedRecord, status: nextStatus };
+        this.getResponseStats();
+        if (this.evaluationIsClosed) {
+          this.fetchClosedEvaluationReportData();
+        } else {
+          this.clearClosedEvaluationReportData();
+        }
+        this.$q.notify({ type: 'positive', message: `Evaluation status changed to ${nextStatus}.` });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to update evaluation status.' });
+      } finally {
+        this.updatingEvaluationStatus = false;
+      }
+    },
+
+    connectActionReportSocket () {
+      if (!this.evaluation?._id || this.actionReportSocket) return;
+
+      const apiUrl = process.env.VUE_APP_API_URL || window.location.origin;
+      const socketUrl = apiUrl.replace(/\/api\/?$/, '');
+      const socket = markRaw(io(socketUrl, { autoConnect: false }));
+      const evaluationId = this.evaluation._id;
+      const joinEvaluation = () => socket.emit('joinEvaluation', evaluationId);
+      const refreshActionReport = (event) => {
+        if (String(event?.evaluation_id) !== String(evaluationId)) return;
+
+        //add notification for action report update, display the new status of the action report at event.status
+        this.$q.notify({ type: 'info', message: `Action report updated: ${event.status}` });
+        this.fetchActionReportStatus();
+        this.fetchClosedEvaluationReportData();
+        this.fetchEvaluationMembers();
+      };
+
+      this.actionReportSocket = socket;
+      this.actionReportSocketHandlers = { joinEvaluation, refreshActionReport, evaluationId };
+      socket.on('connect', joinEvaluation);
+      socket.on('actionReportUpdated', refreshActionReport);
+      socket.connect();
+    },
+
+    disconnectActionReportSocket () {
+      if (!this.actionReportSocket) return;
+
+      const { joinEvaluation, refreshActionReport, evaluationId } = this.actionReportSocketHandlers;
+      this.actionReportSocket.emit('leaveEvaluation', evaluationId);
+      this.actionReportSocket.off('connect', joinEvaluation);
+      this.actionReportSocket.off('actionReportUpdated', refreshActionReport);
+      this.actionReportSocket.disconnect();
+      this.actionReportSocket = null;
+      this.actionReportSocketHandlers = null;
+    },
+
+    fetchClosedEvaluationReportData () {
+      if (!this.evaluationIsClosed) return;
+
+      this.getCommentsByEvaluationId();
+      this.getSignificantlyLowestItemsByEvaluationId();
+      this.getActionReportIndicatorsByEvaluationId();
+      this.getCommentsAndSuggestionsByEvaluationId();
+    },
+
+    clearClosedEvaluationReportData () {
+      this.actionReports = [];
+      for (const indicator of this.evaluation?.indicators || []) {
+        indicator.comments = null;
+        indicator.lowest_rated_items = [];
+        indicator.comments_and_suggestions = [];
+      }
+    },
+
     formatSemester (value) {
       switch (String(value)) {
         case '21': return '1st Semester';
@@ -1090,10 +1269,7 @@ export default {
         this.actionReports = [];
         await this.fetchActionReportStatus();
         this.getResponseStats();
-        this.getCommentsByEvaluationId();
-        this.getSignificantlyLowestItemsByEvaluationId();
-        this.getActionReportIndicatorsByEvaluationId();
-        this.getCommentsAndSuggestionsByEvaluationId();
+        this.fetchClosedEvaluationReportData();
         this.fetchEvaluationMembers();
       } catch (error) {
         this.evaluation = null;
@@ -1133,7 +1309,7 @@ export default {
       }
 
       try {
-        if(this.evaluation.status === 'DRAFT') {
+        if (String(this.evaluation?.status || '').trim().toUpperCase() === 'DRAFT') {
           this.responseStats = [];
           this.fetchSummaryStatus.loading = false;
           this.fetchSummaryStatus.error = 'Summary statistics are only available for evaluations that are not in DRAFT status.';
@@ -1184,6 +1360,8 @@ export default {
     },
 
     async getCommentsByEvaluationId () {
+      if (!this.evaluationIsClosed) return;
+
       try {
         const response = await api.getCommentsByEvaluationId(this.evaluation._id);
         if (!response || response.error || !response.success) {
@@ -1204,6 +1382,8 @@ export default {
     },
 
     async getSignificantlyLowestItemsByEvaluationId () {
+      if (!this.evaluationIsClosed) return;
+
       try {
         const response = await api.getSignificantlyLowestItemsByEvaluationId(this.evaluation._id);
         if (!response || response.error || !response.success) {
@@ -1242,6 +1422,8 @@ export default {
     },
 
     async getActionReportIndicatorsByEvaluationId () {
+      if (!this.evaluationIsClosed) return;
+
       try {
         const response = await api.getActionReportIndicatorsByEvaluationId(this.evaluation._id);
         if (!response || response.error || !response.success) {
@@ -1265,6 +1447,8 @@ export default {
     },
 
     async getCommentsAndSuggestionsByEvaluationId() {
+      if (!this.evaluationIsClosed) return;
+
       try {
         const response = await api.getCommentsAndSuggestionsByEvaluationId(this.evaluation._id);
         if (!response || response.error || !response.success) {
@@ -1384,10 +1568,25 @@ export default {
       }
     },
 
-    submitActionReport () {
-      if (!this.canSubmitActionReport) return;
-      this.actionReportStatus = 'SUBMITTED';
-      this.$q.notify({ type: 'positive', message: 'Action report submitted.' });
+    async submitActionReport () {
+      if (!this.canSubmitActionReport || this.signoffSaving) return;
+
+      this.signoffSaving = true;
+      try {
+        const response = await api.submitActionReport(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to submit action report.');
+        }
+
+        const report = Array.isArray(response.data) ? response.data[0] : response.data;
+        const status = report?.status || report?.action_report_status || report?.actionReportStatus || 'SUBMITTED';
+        this.actionReportStatus = String(status).trim().toUpperCase();
+        this.$q.notify({ type: 'positive', message: 'Action report submitted.' });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to submit action report.' });
+      } finally {
+        this.signoffSaving = false;
+      }
     },
 
     lowestRatedItemsFor (indicator) {

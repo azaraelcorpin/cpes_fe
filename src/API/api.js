@@ -1035,6 +1035,28 @@ export default {
       }
     },
 
+    //submitActionReport
+    async submitActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-reports/submit'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('submitActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
     //#endregion course_eval API
 
 
