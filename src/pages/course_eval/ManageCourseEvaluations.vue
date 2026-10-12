@@ -534,7 +534,7 @@ export default {
         { name: 'course_title', label: 'Course Title', field: 'course_title', align: 'left', sortable: true },
         { name: 'dept_code', label: 'Department', field: 'dept_code', align: 'left', sortable: true },
         { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
-        { name: 'actions', label: 'Actions', align: 'right' }
+        { name: 'actions', label: 'Options', align: 'right' }
       ],
       pagination: {
         rowsPerPage: 10
@@ -671,7 +671,8 @@ export default {
         course_title: '',
         dept_code: JSON.parse(localStorage.getItem('dept_code')),
         status: 'DRAFT',
-        rating_scale_id: null
+        rating_scale_id: null,
+        subject_id: null
       };
     },
 
@@ -762,7 +763,7 @@ export default {
       //use this when using production
       let dpt =toRaw( this.departmentOptions.find(dept => dept.value === this.form.dept_code))
       this.courses = dpt.subjects;
-      
+
       //for development only
       // this.courses = toRaw(sampleCourses);
 
@@ -775,6 +776,7 @@ export default {
       const course = this.courses.find(item => item.subjectCode === courseCode);
       if (course) {
         this.form.course_title = course.subjectName;
+        this.form.subject_id = course.subjectId;
         if (!this.hasStoredDepartment && !this.form.dept_code) this.form.dept_code = course.department;
       }
     },
@@ -784,7 +786,7 @@ export default {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON or admin can create an evaluation.' });
         return;
       }
-      
+
 
       try {
         this.courseEvaluationTemplate = await this.getCourseEvaluationTemplate();
@@ -983,7 +985,7 @@ export default {
         this.loading = false;
       }
     },
-    
+
   }
 };
 

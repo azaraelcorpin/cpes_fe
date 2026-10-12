@@ -218,7 +218,7 @@ export default{
                         localStorage.setItem("dept_code",JSON.stringify(sid.dept_code))
                       if(sid.college_code)
                         localStorage.setItem("college_code",JSON.stringify(sid.college_code))
-                      localStorage.setItem("dept_code",JSON.stringify('ABM'))
+
                   }
                       router.push({ path: 'dashboard'})
                       loading.value=false;

@@ -314,7 +314,7 @@
                         @update:model-value="value => updateActionReport(indicator, 'action', value)"
                       />
                       <div class="row justify-end action-report-controls">
-                        <q-btn icon="save" label="Save action" unelevated color="positive" no-caps :disable="!canEditActionReport" @click="saveActionReport(indicator)" />
+                        <q-btn v-if="actionReportStatus === 'DRAFT'" icon="save" label="Save action" unelevated color="positive" no-caps :disable="!canEditActionReport" @click="saveActionReport(indicator)" />
                       </div>
                     </div>
 
@@ -351,7 +351,7 @@
                       </div>
                       <div v-else class="text-caption text-grey-6 q-mb-md">No member comments or suggestions yet.</div>
                       <div class="row justify-end action-report-controls">
-                        <q-btn icon="add_comment" label="Add comments" unelevated color="secondary" no-caps :disable="!isAssignedEvaluationMember || actionReportStatus !== 'DRAFT'" @click="addMemberComments(indicator)" />
+                        <q-btn v-if="actionReportStatus === 'DRAFT'" icon="add_comment" label="Add comments" unelevated color="secondary" no-caps :disable="!isAssignedEvaluationMember" @click="addMemberComments(indicator)" />
                       </div>
                     </div>
                   </div>

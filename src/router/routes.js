@@ -32,9 +32,9 @@ const routes = [
     name: 'manageEvaluations',
     meta: {
       title: 'Evaluation Management',
-      roles: ['FACULTY','CHAIRPERSON', 'DEAN', 'admin']
+      roles: ['FACULTY','CHAIRPERSON', 'DEAN', 'admin', 'CCSID', 'VCAA']
     },
-    icon: 'assignment',
+    icon: 'data_thresholding',
     visible: true,
     children: [
             // 1. The Management List Page
@@ -44,9 +44,9 @@ const routes = [
                 component: () => import('pages/course_eval/ManageCourseEvaluations.vue'),
                 meta: {
                   title: 'Course Evaluations',
-                  roles: ['FACULTY','CHAIRPERSON', 'DEAN', 'admin']
+                  roles: ['FACULTY','CHAIRPERSON', 'DEAN', 'admin', 'CCSID', 'VCAA']
                 },
-                icon: 'assignment',
+                icon: 'topic',
                 visible: true,
               },
 
@@ -92,6 +92,19 @@ const routes = [
             ]
 },
 //#endregion Evaluation Management
+
+//#region Action Reports Management where signatories can view and approve action reports
+{
+  path: '/action-reports',
+    name: 'actionReports',
+    meta: {
+      title: 'Action Reports',
+      roles: ['CHAIRPERSON', 'DEAN', 'admin', 'CCSID', 'VCAA']
+    },
+    icon: 'summarize',
+    visible: true,
+  },
+
   {
     path: '/student/enrolled-courses',
     name:'studentEnrolledCourses',
