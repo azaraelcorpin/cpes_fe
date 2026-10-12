@@ -37,6 +37,7 @@
                 </q-avatar>
                 <div class="text-subtitle1 q-mt-md q-mb-xs">{{ cookies.isKey('_UID_')?cookies.get('_UID_').fullname:'Un Identified' }}</div>
                 <div >{{ cookies.isKey('_UID_')?cookies.get('_UID_').email:'Un Identefied' }}</div>
+                <div >{{ cookies.isKey('_UID_')?cookies.get('_UID_').role:'Un Identefied' }}</div>
                 <q-btn
                   color="black"
                   label="Logout"

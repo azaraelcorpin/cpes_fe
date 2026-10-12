@@ -80,7 +80,7 @@
             <q-btn outline dense label="Coordinator" @click="test('elena.reyes@msugensan.edu.ph', 'faculty')" />
             <q-btn outline dense label="Member" @click="test('angela.gonzales@msugensan.edu.ph', 'faculty')" />
             <q-btn outline dense label="Chairperson" @click="test('argene.arsenal@msugensan.edu.ph', 'chairperson')" />
-            <q-btn outline dense label="Dean" @click="test('nsgunay@msugensan.edu.ph', 'dean')" />
+            <q-btn outline dense label="Dean" @click="test('donnaria.canacan@msugensan.edu.ph', 'dean')" />
             <q-btn outline dense label="CCSID" @click="test('ccsid@msugensan.edu.ph', 'admin')" />
             <q-btn outline dense label="VCAA" @click="test('vcaa@msugensan.edu.ph', 'admin')" />
           </div>

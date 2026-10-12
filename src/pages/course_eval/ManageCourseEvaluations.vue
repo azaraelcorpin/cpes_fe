@@ -672,7 +672,6 @@ export default {
         dept_code: JSON.parse(localStorage.getItem('dept_code')),
         status: 'DRAFT',
         rating_scale_id: null,
-        subject_id: null
       };
     },
 
@@ -776,7 +775,6 @@ export default {
       const course = this.courses.find(item => item.subjectCode === courseCode);
       if (course) {
         this.form.course_title = course.subjectName;
-        this.form.subject_id = course.subjectId;
         if (!this.hasStoredDepartment && !this.form.dept_code) this.form.dept_code = course.department;
       }
     },
