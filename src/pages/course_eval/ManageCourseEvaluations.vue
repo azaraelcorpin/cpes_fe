@@ -181,6 +181,9 @@
                 {{ props.row.status }}
               </q-badge>
             </q-td>
+            <q-td key="action_report_status" :props="props">
+              {{ String(props.row.status || '').trim().toUpperCase() === 'CLOSED' ? props.row.action_report_status || '' : '' }}
+            </q-td>
             <q-td key="actions" :props="props">
               <q-btn
                 flat
@@ -558,6 +561,7 @@ export default {
         { name: 'dept_code', label: 'Department', field: 'dept_code', align: 'left', sortable: true },
         { name: 'college_code', label: 'College', field: 'college_code', align: 'left', sortable: true },
         { name: 'status', label: 'Form Status', field: 'status', align: 'center', sortable: true },
+        { name: 'action_report_status', label: 'Action Report Status', field: 'action_report_status', align: 'center', sortable: true },
         { name: 'actions', label: 'Options', align: 'right' }
       ],
       pagination: {
