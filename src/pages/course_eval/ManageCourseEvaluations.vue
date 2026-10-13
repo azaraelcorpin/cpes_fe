@@ -70,7 +70,7 @@
           dense
           clearable
           :options="statusOptions"
-          label="Status"
+          label="Form Status"
         />
 
         <q-select
@@ -557,7 +557,7 @@ export default {
         { name: 'course_title', label: 'Course Title', field: 'course_title', align: 'left', sortable: true },
         { name: 'dept_code', label: 'Department', field: 'dept_code', align: 'left', sortable: true },
         { name: 'college_code', label: 'College', field: 'college_code', align: 'left', sortable: true },
-        { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
+        { name: 'status', label: 'Form Status', field: 'status', align: 'center', sortable: true },
         { name: 'actions', label: 'Options', align: 'right' }
       ],
       pagination: {
