@@ -1,12 +1,23 @@
 <template>
   <q-page class="student-submitted-page q-pa-md q-pa-lg-xl">
+    <div class="submitted-close-bar">
+      <q-btn
+        flat
+        icon="close"
+        label="Close"
+        no-caps
+        class="submitted-close-btn"
+        @click="closeSubmittedEvaluation"
+      />
+    </div>
+
     <div class="submitted-container">
       <q-card v-if="loading" flat bordered class="q-pa-lg text-center text-grey-6">
         Loading submitted evaluation details...
       </q-card>
 
       <template v-else-if="submittedEvaluation">
-        <q-card flat bordered class="submitted-header q-mb-md">
+        <q-card flat bordered class="submitted-header submitted-evaluation-sticky q-mb-md">
           <q-card-section>
             <div class="row items-start q-col-gutter-md">
               <div class="col">
@@ -194,6 +205,10 @@ export default {
   },
 
   methods: {
+    closeSubmittedEvaluation () {
+      this.$router.push({ name: 'studentEnrolledCourses' })
+    },
+
     safeParse (value) {
       if (!value) return null
 
@@ -341,6 +356,33 @@ export default {
   background: #f5f7fb;
 }
 
+.submitted-close-bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: flex-start;
+  width: min(100%, 960px);
+  margin: 0 auto 12px;
+  padding: 8px 0;
+  background: #f5f7fb;
+}
+
+.submitted-close-btn {
+  color: #456b9a;
+  background: #eaf0f8;
+  border: 1px solid #dce6f2;
+  border-radius: 999px;
+  padding: 0 12px;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.submitted-close-btn:hover {
+  color: #315783;
+  background: #dfe9f5;
+  border-color: #cbd9ea;
+}
+
 .submitted-container {
   width: min(100%, 960px);
   margin: 0 auto;
@@ -349,6 +391,12 @@ export default {
 .submitted-header {
   border-radius: 10px;
   box-shadow: 0 4px 18px rgba(37, 55, 80, 0.08);
+}
+
+.submitted-evaluation-sticky {
+  position: sticky;
+  top: 52px;
+  z-index: 9;
 }
 
 .indicator-block {

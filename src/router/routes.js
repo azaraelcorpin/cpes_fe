@@ -104,7 +104,7 @@ const routes = [
     icon: 'summarize',
     visible: true,
   },
-
+ //#endregion Action Reports Management
   {
     path: '/student/enrolled-courses',
     name:'studentEnrolledCourses',
@@ -128,7 +128,9 @@ const routes = [
     visible:false,
   },
 
-  ///SysAdmin
+ 
+
+  /// #region System Admin
   {
     path: '/sysadm',
     name:'sysadm',
@@ -179,6 +181,8 @@ const routes = [
       },
     ],
   },
+
+  // #endregion System Admin
 
 
 

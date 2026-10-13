@@ -88,7 +88,7 @@
             <q-td :props="props">
               <q-btn
                 dense
-                :disable="props.row.formStatus !== 'ACTIVE'"
+                :disable="props.row.formStatus === 'INACTIVE' && props.row.status !== 'Evaluated'"
                 :unelevated="props.row.status !== 'Evaluated'"
                 :outline="props.row.status === 'Evaluated'"
                 :color="props.row.status === 'Evaluated' ? 'secondary' : 'primary'"

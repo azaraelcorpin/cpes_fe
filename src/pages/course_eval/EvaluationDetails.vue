@@ -403,15 +403,18 @@
           <q-form @submit="assignMember">
             <q-card-section class="q-gutter-md">
               <q-select
-                v-model="memberForm.facultyId"
+                v-model="memberForm.email"
                 outlined
+                use-input
                 emit-value
                 map-options
+                new-value-mode="add-unique"
                 :options="availableFaculties"
                 option-label="fullname"
-                option-value="employeeId"
-                label="Faculty"
-                :rules="[requiredFieldValidation]"
+                option-value="email"
+                label="Select faculty or enter email"
+                :rules="[requiredFieldValidation, emailFieldValidation]"
+                @new-value="setMemberEmail"
               >
                 <template #option="scope">
                   <q-item v-bind="scope.itemProps">
@@ -649,7 +652,7 @@ export default {
       signoffSaving: false,
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
       memberForm: {
-        facultyId: null,
+        email: '',
         role: 'MEMBER'
       },
 
@@ -984,12 +987,15 @@ export default {
     },
 
     selectedFaculty () {
-      return this.faculties.find(faculty => String(faculty.employeeId) === String(this.memberForm.facultyId));
+      const email = String(this.memberForm.email || '').trim().toLowerCase();
+      return this.faculties.find(faculty => String(faculty.email || '').trim().toLowerCase() === email);
     },
 
     availableFaculties () {
       const assignedEmails = (this.evaluation?.members || []).map(member => String(member.email || '').trim().toLowerCase());
-      return this.faculties.filter(faculty => !assignedEmails.includes(String(faculty.email || '').trim().toLowerCase())).filter(faculty => faculty.dept_code === this.evaluation.dept_code );
+      return this.faculties
+        .filter(faculty => !assignedEmails.includes(String(faculty.email || '').trim().toLowerCase()))
+        .filter(faculty => faculty.dept_code === this.evaluation?.dept_code);
     }
   },
 
@@ -1149,8 +1155,12 @@ export default {
         this.$q.notify({ type: 'warning', message: 'Only a CHAIRPERSON can assign evaluation members.' });
         return;
       }
-      this.memberForm = { facultyId: null, role: 'MEMBER' };
+      this.memberForm = { email: '', role: 'MEMBER' };
       this.memberDialog.show = true;
+    },
+
+    setMemberEmail (value, done) {
+      done(String(value || '').trim());
     },
 
     async assignMember () {
@@ -1159,18 +1169,18 @@ export default {
         return;
       }
       
-      const faculty = this.selectedFaculty;
-      if (!faculty) return;
+      const facultyEmail = String(this.memberForm.email || '').trim().toLowerCase();
+      if (this.emailFieldValidation(facultyEmail) !== true) return;
 
-      const facultyEmail = String(faculty.email || '').trim().toLowerCase();
+      const faculty = this.selectedFaculty;
       const alreadyAssigned = this.evaluation.members?.some(member => String(member.email || '').trim().toLowerCase() === facultyEmail);
 
       if (alreadyAssigned) {
-        this.$q.notify({ type: 'warning', message: `${faculty.fullname} is already assigned to this evaluation.` });
+        this.$q.notify({ type: 'warning', message: `${facultyEmail} is already assigned to this evaluation.` });
         return;
       }
 
-      if (this.memberForm.role === 'COORDINATOR' && this.evaluation.members?.some(member => member.role === 'COORDINATOR')) {
+      if (this.memberForm.role === 'COORDINATOR' && this.evaluation.members?.some(member => String(member.role || '').toUpperCase() === 'COORDINATOR')) {
         this.$q.notify({ type: 'warning', message: 'Only one COORDINATOR can be assigned to an evaluation.' });
         return;
       }
@@ -1181,8 +1191,8 @@ export default {
 
       const newMember = {
         evaluation_id: this.evaluation._id,
-        fullname: faculty.fullname,
-        email: faculty.email,
+        fullname: faculty?.fullname || facultyEmail,
+        email: facultyEmail,
         role: this.memberForm.role
       }
       try {
@@ -1197,7 +1207,7 @@ export default {
         return;
       }
       this.memberDialog.show = false;
-      this.$q.notify({ type: 'positive', message: `${faculty.fullname} assigned successfully.` });
+      this.$q.notify({ type: 'positive', message: `${faculty?.fullname || facultyEmail} assigned successfully.` });
     },
 
     // get all evaluation members for the current evaluation
@@ -1786,6 +1796,11 @@ export default {
       return true;
     },
 
+    emailFieldValidation (value) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim()) ||
+        'Enter a valid email address';
+    },
+
     notifyStateLockout () {
       this.$q.notify({
         type: 'warning',
@@ -1874,7 +1889,7 @@ export default {
       this.dialog = {
         show: true,
         type: 'ITEM',
-        title: `Append Criteria to: ${parentIndicator.name}`,
+        title: `Append Criteria to: ${parentIndicator.indicator_name || parentIndicator.name || 'Indicator'}`,
         targetRef: parentIndicator,
         index: null
       };
