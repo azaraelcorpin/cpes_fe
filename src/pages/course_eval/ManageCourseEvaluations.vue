@@ -543,13 +543,13 @@ export default {
       pagination: {
         rowsPerPage: 10
       },
-      form: this.getInitialFormState()
+      form: this.getInitialFormState(cookies.get('_UID_')?.dept_code || null)
     };
   },
 
   computed: {
     hasStoredDepartment () {
-      return Boolean(String(localStorage.getItem('dept_code') || '').trim());
+      return Boolean(String(this.cookies.get('_UID_')?.dept_code || '').trim());
     },
 
     courseOptions () {
@@ -566,7 +566,7 @@ export default {
     },
 
     currentUserRoles () {
-      const storedRoles = localStorage.getItem('userRoles');
+      const storedRoles = this.cookies.get('_UID_')?.role;
       if (!storedRoles) return [];
 
       let roles;
@@ -686,14 +686,14 @@ export default {
       return '';
     },
 
-    getInitialFormState () {
+    getInitialFormState (deptCode) {
       return {
         _id: null,
         acad_year: '',
         sem: 1,
         course_code: '',
         course_title: '',
-        dept_code: JSON.parse(localStorage.getItem('dept_code')),
+        dept_code: deptCode,
         status: 'DRAFT',
         rating_scale_id: null,
       };
@@ -831,7 +831,7 @@ export default {
                 sem: semCode,
                 course_code: '',
                 course_title: '',
-                dept_code: JSON.parse(localStorage.getItem('dept_code')),
+                dept_code: this.cookies.get('_UID_')?.dept_code || null,
                 status: 'DRAFT',
                 rating_scale_id: this.courseEvaluationTemplate.rating_scale_id,
               };
