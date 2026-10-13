@@ -491,12 +491,15 @@ import api from 'src/API/api.js'
 import { toRaw } from 'vue';
 import sampleCourses from './sampleCourses.json'
 import myDialog from 'src/plugins/myDialog';
+import { useCookies } from 'vue3-cookies'
 
 export default {
   name: 'EvaluationManagementPage',
 
   data () {
+    const { cookies } = useCookies()
     return {
+      cookies,
       evaluations: [],
       loading: false,
       saving: false,
@@ -515,6 +518,7 @@ export default {
       statusFilter: null,
       acadYearFilter: null,
       semesterFilter: null,
+      academicYearOptions: [],
       statusOptions: [
         'DRAFT',
         'ACTIVE',
@@ -585,15 +589,6 @@ export default {
         .map(role => String(role).trim().toUpperCase());
     },
 
-    academicYearOptions () {
-      return [...new Set(
-        this.evaluations
-          .map(evaluation => evaluation.acad_year)
-          .filter(year => year !== null && year !== undefined && year !== '')
-          .map(year => String(year))
-      )].sort();
-    },
-
     hasActiveFilters () {
       return Boolean(
         this.filter ||
@@ -648,11 +643,40 @@ export default {
 
   },
 
-  mounted () {
+  watch: {
+    acadYearFilter () {
+      this.getEvaluations();
+    },
+    semesterFilter () {
+      this.getEvaluations();
+    }
+  },
+
+  async mounted () {
+    await this.loadAcademicYears();
     this.loadSampleManagementData();
   },
 
   methods: {
+    async loadAcademicYears () {
+      try {
+        const response = await api.getAllAcadYears();
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load academic years.');
+        }
+
+        this.academicYearOptions = response.data;
+        this.acadYearFilter = this.academicYearOptions[0] || null;
+        const storedSemester = this.cookies.get('_UID_')?.sem;
+        this.semesterFilter = this.semesterOptions.find(option => option.label === storedSemester)?.value || null;
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load academic years.'
+        });
+      }
+    },
+
     formatSemester (value) {
       switch (value) {
         case 21: return '1st Semester';
@@ -962,7 +986,11 @@ export default {
       this.loading = true;
 
       try {
-        const response = await api.getEvaluations();
+        const payload = {
+          acad_year: this.acadYearFilter,
+          sem:  parseInt(this.semesterFilter)
+        };
+        const response = await api.getEvaluations(payload);
 
         if (!response || response.error || !response.success) {
           throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluations.');

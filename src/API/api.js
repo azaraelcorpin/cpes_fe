@@ -522,7 +522,7 @@ export default {
       var path = '/api/course-evaluation/evaluations/create'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = payload  
+      const body = payload
       try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
@@ -541,7 +541,7 @@ export default {
       var path = '/api/course-evaluation/evaluations/delete'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = { _id: id }  
+      const body = { _id: id }
       try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
@@ -556,11 +556,11 @@ export default {
       }
     },
 
-    async getEvaluations(){
+    async getEvaluations(payload){
       var path = '/api/course-evaluation/evaluations'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = {}  
+      const body = payload || {};
       try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
@@ -573,7 +573,7 @@ export default {
         console.log('error',error.message);
         return { error:error }
       }
-    },    
+    },
 
     async getByEvaluation_Id(id){
       var path = '/api/course-evaluation/evaluations/getEvaluationFormDetails'
@@ -611,13 +611,13 @@ export default {
         console.log('error',error.message);
         return { error:error }
       }
-    },    
+    },
 
     async updateEvaluation(payload){
       var path = '/api/course-evaluation/evaluations/update'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
-      const body = payload  
+      const body = payload
       try {
         const response = await axios.post(url, body, config);
         if (response && response.data && response.data.success) {
@@ -686,6 +686,26 @@ export default {
       }
     },
 
+
+    //getAllAcadYears
+    async getAllAcadYears() {
+      var path = '/api/course-evaluation/evaluations/getAllAcadYears'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      try {
+        const response = await axios.post(url, {}, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getAllAcadYears Error');
+          return { error: response }
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error }
+      }
+    },
+
     async createEvaluationMember(payload){
       var path = '/api/course-evaluation/action-members/create'
       var url = `${api_url}${path}`
@@ -721,7 +741,7 @@ export default {
         return { error: error }
       }
     },
-    
+
     //get evaluation members by evaluation id
     async getEvaluationMembersByEvaluationId(evaluationId){
       var path = '/api/course-evaluation/action-members/getAllByEvaluationId'
@@ -903,11 +923,11 @@ export default {
           console.log('deleteMemberCommentSuggestion Error');
           return { error: response };
         }
-      } catch (error) { 
+      } catch (error) {
         console.log('error', error.message);
         return { error: error };
       }
-    },    
+    },
 
     //createMemberCommentSuggestion with payload indicator_id, evaluation_id, member_id, comment
     async createMemberCommentSuggestion(payload){
