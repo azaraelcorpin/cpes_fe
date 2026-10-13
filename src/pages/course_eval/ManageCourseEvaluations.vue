@@ -95,6 +95,17 @@
           label="Semester"
         />
 
+        <q-select
+          v-if="canViewCollege"
+          v-model="collegeFilter"
+          class="col-12 col-md-3"
+          outlined
+          dense
+          clearable
+          :options="collegeOptions"
+          label="College"
+        />
+
         <q-btn
           v-if="hasActiveFilters"
           flat
@@ -112,7 +123,7 @@
       <q-table
         v-if="currentView === 'table'"
         :rows="filteredEvaluations"
-        :columns="columns"
+        :columns="visibleColumns"
         row-key="_id"
         :loading="loading"
         :pagination="pagination"
@@ -157,6 +168,9 @@
             </q-td>
             <q-td key="dept_code" :props="props">
               {{ props.row.dept_code }}
+            </q-td>
+            <q-td v-if="canViewCollege" key="college_code" :props="props">
+              {{ props.row.college_code }}
             </q-td>
             <q-td key="status" :props="props">
               <q-badge
@@ -249,6 +263,10 @@
                 <div class="col-6">
                   <div class="text-weight-medium">Department</div>
                   <div>{{ evaluation.dept_code }}</div>
+                </div>
+                <div v-if="canViewCollege" class="col-6">
+                  <div class="text-weight-medium">College</div>
+                  <div>{{ evaluation.college_code }}</div>
                 </div>
               </q-card-section>
 
@@ -518,6 +536,7 @@ export default {
       statusFilter: null,
       acadYearFilter: null,
       semesterFilter: null,
+      collegeFilter: null,
       academicYearOptions: [],
       statusOptions: [
         'DRAFT',
@@ -537,6 +556,7 @@ export default {
         { name: 'course_code', label: 'Course Code', field: 'course_code', align: 'left', sortable: true },
         { name: 'course_title', label: 'Course Title', field: 'course_title', align: 'left', sortable: true },
         { name: 'dept_code', label: 'Department', field: 'dept_code', align: 'left', sortable: true },
+        { name: 'college_code', label: 'College', field: 'college_code', align: 'left', sortable: true },
         { name: 'status', label: 'Status', field: 'status', align: 'center', sortable: true },
         { name: 'actions', label: 'Options', align: 'right' }
       ],
@@ -563,6 +583,15 @@ export default {
           label: `${course.subjectCode} - ${course.subjectName}`,
           value: course.subjectCode
         }));
+    },
+
+    collegeOptions () {
+        return [...new Set(
+          this.evaluations
+            .map(evaluation => evaluation.college_code)
+            .filter(collegeCode => collegeCode !== null && collegeCode !== undefined && collegeCode !== '')
+            .map(collegeCode => String(collegeCode))
+        )].sort();
     },
 
     currentUserRoles () {
@@ -594,16 +623,27 @@ export default {
         this.filter ||
         this.statusFilter ||
         this.acadYearFilter ||
-        this.semesterFilter
+        this.semesterFilter ||
+        this.collegeFilter
       );
     },
 
     canCreateEvaluation () {
-      return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN');
+      return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('admin');
     },
 
     canManageEvaluations () {
-      return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN');
+      return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('admin');
+    },
+
+    canViewCollege () {
+      return ['admin', 'VCAA', 'CCSID'].some(role => this.currentUserRoles.includes(role));
+    },
+
+    visibleColumns () {
+      return this.canViewCollege
+        ? this.columns
+        : this.columns.filter(column => column.name !== 'college_code');
     },
 
     visibleViewOptions () {
@@ -630,7 +670,10 @@ export default {
         const matchesSemester = !this.semesterFilter ||
           String(row.sem) === String(this.semesterFilter);
 
-        return matchesSearch && matchesStatus && matchesAcademicYear && matchesSemester;
+        const matchesCollege = !this.collegeFilter ||
+          String(row.college_code) === String(this.collegeFilter);
+
+        return matchesSearch && matchesStatus && matchesAcademicYear && matchesSemester && matchesCollege;
       });
     },
 
@@ -734,6 +777,7 @@ export default {
       this.statusFilter = null;
       this.acadYearFilter = null;
       this.semesterFilter = null;
+      this.collegeFilter = null;
     },
 
     startEvaluationDrag (evaluation) {
