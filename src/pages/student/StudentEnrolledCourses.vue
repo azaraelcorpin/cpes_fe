@@ -73,7 +73,7 @@
               >
                 {{ props.row.status }}
               </q-badge>
-              <q-badge v-if="props.row.formStatus !== 'ACTIVE'"
+              <q-badge v-if="props.row.formStatus !== 'ACTIVE' && props.row.status !== 'Evaluated'"
                 rounded
                 :color="'grey-5'"
                 text-color="white"
@@ -124,7 +124,7 @@
                   </q-badge>
 
                   <q-badge
-                    v-if="course.formStatus !== 'ACTIVE'"
+                    v-if="course.formStatus !== 'ACTIVE' && course.status !== 'Evaluated'"
                     rounded
                     :color="'grey-5'"
                     text-color="white"
@@ -164,7 +164,7 @@
 
               <q-card-actions align="right" class="q-px-md q-pb-md">
                 <q-btn
-                  :disable="course.formStatus !== 'ACTIVE'"
+                  :disable="course.formStatus !== 'ACTIVE' && course.status !== 'Evaluated'"
                   :to="course.status === 'Evaluated'
                     ? { name: 'studentSubmittedEvaluation', params: { id: course.evaluationId } }
                     : { name: 'studentCourseEvaluation', params: { course_code: course.subjectCode } }"
