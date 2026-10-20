@@ -1077,6 +1077,160 @@ export default {
       }
     },
 
+    //reviewActionReport
+    async reviewActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-reports/review'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('reviewActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //endorseActionReport
+    async endorseActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-reports/endorse'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('endorseActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //checkActionReport
+    async checkActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-reports/check'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('checkActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //approveActionReport
+    async approveActionReport(evaluationId){
+      var path = '/api/course-evaluation/action-reports/approve'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('approveActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //bulkEndorseActionReports
+    async bulkEndorseActionReports(payload){
+      var path = '/api/course-evaluation/action-reports/bulk-endorse'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        ids: payload.map(item => item._id)
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('bulkEndorseActionReports Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //bulkCheckActionReports
+    async bulkCheckActionReports(payload){
+      var path = '/api/course-evaluation/action-reports/bulk-check'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        ids: payload.map(item => item._id)
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('bulkCheckActionReports Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //bulkApproveActionReports
+    async bulkApproveActionReports(payload){
+      var path = '/api/course-evaluation/action-reports/bulk-approve'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        ids: payload.map(item => item._id)
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('bulkApproveActionReports Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
     //#endregion course_eval API
 
 

@@ -511,12 +511,14 @@
 
         <div v-if="actionReportApprovalLabel" class="action-signoff-controls">
           <q-btn
-            disable
+            :disable="!canApproveActionReport"
+            :loading="signoffSaving"
             unelevated
             no-caps
             color="primary"
             icon="fact_check"
             :label="actionReportApprovalLabel"
+            @click="approveActionReport"
           />
           <q-btn
             disable
@@ -766,8 +768,19 @@ export default {
       return this.isAssignedCoordinator && this.actionReportStatus === 'DRAFT' && this.allActionMembersAgreed;
     },
 
+    canApproveActionReport () {
+      const status = String(this.actionReportStatus || '').trim().toUpperCase();
+
+      return (
+        (status === 'SUBMITTED' && this.currentUserRoles.includes('CHAIRPERSON')) ||
+        (status === 'REVIEWED' && this.currentUserRoles.includes('DEAN')) ||
+        (status === 'ENDORSED' && this.currentUserRoles.includes('CCSID')) ||
+        (status === 'CHECKED' && this.currentUserRoles.includes('VCAA'))
+      );
+    },
+
     actionReportApprovalLabel () {
-      if (!this.evaluationIsClosed || ['DRAFT', 'APPROVED'].includes(this.actionReportStatus)) return '';
+      if (!this.evaluationIsClosed || !this.canApproveActionReport) return '';
 
       if (this.currentUserRoles.includes('CHAIRPERSON')) return 'REVIEWED';
       if (this.currentUserRoles.includes('DEAN')) return 'ENDORSE';
@@ -1594,6 +1607,53 @@ export default {
         this.$q.notify({ type: 'positive', message: 'Action report submitted.' });
       } catch (error) {
         this.$q.notify({ type: 'negative', message: error.message || 'Failed to submit action report.' });
+      } finally {
+        this.signoffSaving = false;
+      }
+    },
+
+    async approveActionReport () {
+      if (!this.canApproveActionReport || this.signoffSaving || !this.evaluation?._id) return;
+
+      const approvalActions = {
+        SUBMITTED: {
+          role: 'CHAIRPERSON',
+          nextStatus: 'REVIEWED',
+          request: () => api.reviewActionReport(this.evaluation._id)
+        },
+        REVIEWED: {
+          role: 'DEAN',
+          nextStatus: 'ENDORSED',
+          request: () => api.endorseActionReport(this.evaluation._id)
+        },
+        ENDORSED: {
+          role: 'CCSID',
+          nextStatus: 'CHECKED',
+          request: () => api.checkActionReport(this.evaluation._id)
+        },
+        CHECKED: {
+          role: 'VCAA',
+          nextStatus: 'APPROVED',
+          request: () => api.approveActionReport(this.evaluation._id)
+        }
+      };
+      const action = approvalActions[String(this.actionReportStatus || '').trim().toUpperCase()];
+      if (!action || !this.currentUserRoles.includes(action.role)) return;
+
+      this.signoffSaving = true;
+      try {
+        const response = await action.request();
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || `Failed to ${action.nextStatus.toLowerCase()} the action report.`);
+        }
+
+        const report = Array.isArray(response.data) ? response.data[0] : response.data;
+        const status = report?.status || report?.action_report_status || report?.actionReportStatus || action.nextStatus;
+        this.actionReportStatus = String(status).trim().toUpperCase();
+        await this.fetchActionReportStatus();
+        this.$q.notify({ type: 'positive', message: `Action report ${action.nextStatus.toLowerCase()}.` });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to update action report status.' });
       } finally {
         this.signoffSaving = false;
       }
