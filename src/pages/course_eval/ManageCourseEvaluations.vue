@@ -539,6 +539,7 @@ export default {
       statusFilter: null,
       acadYearFilter: null,
       semesterFilter: null,
+      evaluationFiltersInitialized: false,
       collegeFilter: null,
       academicYearOptions: [],
       statusOptions: [
@@ -692,16 +693,18 @@ export default {
 
   watch: {
     acadYearFilter () {
-      this.getEvaluations();
+      if (this.evaluationFiltersInitialized) this.getEvaluations();
     },
     semesterFilter () {
-      this.getEvaluations();
+      if (this.evaluationFiltersInitialized) this.getEvaluations();
     }
   },
 
   async mounted () {
     await this.loadAcademicYears();
-    this.loadSampleManagementData();
+    await this.$nextTick();
+    this.evaluationFiltersInitialized = true;
+    await this.getEvaluations();
   },
 
   methods: {
@@ -744,14 +747,6 @@ export default {
         status: 'DRAFT',
         rating_scale_id: null,
       };
-    },
-
-    loadSampleManagementData () {
-      this.loading = true;
-
-      this.getEvaluations()
-
-      this.loading = false;
     },
 
     canDeleteEvaluation (evaluation) {

@@ -1165,6 +1165,29 @@ export default {
       }
     },
 
+    //declined action report
+    async declineActionReport(evaluationId, reason){
+      var path = '/api/course-evaluation/action-reports/decline'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        _id: evaluationId,
+        reason: reason
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('declineActionReport Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
     //bulkEndorseActionReports
     async bulkEndorseActionReports(payload){
       var path = '/api/course-evaluation/action-reports/bulk-endorse'
@@ -1223,6 +1246,28 @@ export default {
           return response.data;
         } else {
           console.log('bulkApproveActionReports Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    //getActivityLogsByEvaluationId
+    async getActivityLogsByEvaluationId(evaluationId){
+      var path = '/api/course-evaluation/action-report-approvals/getByEvaluationId'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        evaluation_id: evaluationId,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getActivityLogsByEvaluationId Error');
           return { error: response };
         }
       } catch (error) {

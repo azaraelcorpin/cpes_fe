@@ -1,0 +1,65 @@
+ [
+    {
+        "_id": "7",
+        "evaluation_id": "14",
+        "role": "VCAA",
+        "email": "vcaa@msugensan.edu.ph",
+        "status": "APPROVED",
+        "acted_at": "2026-10-20T08:50:00.758Z",
+        "remarks": null
+    },
+    {
+        "_id": "6",
+        "evaluation_id": "14",
+        "role": "CCSID",
+        "email": "ccsid@msugensan.edu.ph",
+        "status": "CHECKED",
+        "acted_at": "2026-10-20T08:49:20.679Z",
+        "remarks": null
+    },
+    {
+        "_id": "5",
+        "evaluation_id": "14",
+        "role": "DEAN",
+        "email": "donnaria.canacan@msugensan.edu.ph",
+        "status": "ENDORSED",
+        "acted_at": "2026-10-20T08:48:34.376Z",
+        "remarks": null
+    },
+    {
+        "_id": "10",
+        "evaluation_id": "14",
+        "role": "CHAIRPERSON",
+        "email": "argene.arsenal@msugensan.edu.ph",
+        "status": "REVIEWED",
+        "acted_at": "2026-10-20T07:55:58.501Z",
+        "remarks": null
+    },
+    {
+        "_id": "9",
+        "evaluation_id": "14",
+        "role": "COORDINATOR",
+        "email": "elena.reyes@msugensan.edu.ph",
+        "status": "SUBMITTED",
+        "acted_at": "2026-10-19T01:10:45.322Z",
+        "remarks": "Fixed the calculation error in the grade distribution."
+    },
+    {
+        "_id": "4",
+        "evaluation_id": "14",
+        "role": "CHAIRPERSON",
+        "email": "argene.arsenal@msugensan.edu.ph",
+        "status": "DECLINED",
+        "acted_at": "2026-10-14T04:15:22.115Z",
+        "remarks": "Please update the grade distribution section; the percentages do not total 100%."
+    },
+    {
+        "_id": "2",
+        "evaluation_id": "14",
+        "role": "COORDINATOR",
+        "email": "elena.reyes@msugensan.edu.ph",
+        "status": "SUBMITTED",
+        "acted_at": "2026-10-13T02:23:09.028Z",
+        "remarks": null
+    }
+]

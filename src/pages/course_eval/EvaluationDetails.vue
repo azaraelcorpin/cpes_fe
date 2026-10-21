@@ -71,6 +71,7 @@
         <q-tab name="details" icon="account_tree" label="Details" />
         <q-tab name="summary" icon="insights" label="Summary" />
         <q-tab name="action-report" icon="assignment_turned_in" label="Action Report" />
+        <q-tab v-if="evaluationIsClosed" name="activity-log-timeline" icon="history" label="Activity Log Timeline" />
         <q-tab name="members" icon="groups" label="Members" />
       </q-tabs>
 
@@ -362,6 +363,13 @@
           </div>
         </q-tab-panel>
 
+        <q-tab-panel v-if="evaluationIsClosed" name="activity-log-timeline" class="q-pa-none">
+          <div v-if="activityLogLoading" class="flex flex-center q-pa-xl">
+            <q-spinner color="primary" size="2em" />
+          </div>
+          <ActivityLogTimeline v-else :log-items="activityLogItems" />
+        </q-tab-panel>
+
         <q-tab-panel name="members" class="q-pa-none">
           <q-card flat bordered class="bg-white">
             <q-card-section class="row items-center justify-between"><div><div class="text-subtitle1 text-weight-bold">Action Members</div><div class="text-caption text-grey-6">Users assigned to this evaluation.</div></div><q-btn v-if="canAssignMembers" unelevated color="primary" icon="person_add" label="Assign Member" @click="openAssignMember" /></q-card-section>
@@ -467,6 +475,54 @@
         </q-card>
       </q-dialog>
 
+      <q-dialog v-model="actionReportChangeDialog.show" persistent>
+        <q-card style="width: 560px; max-width: 95vw">
+          <q-form @submit="proceedWithActionReportChanges">
+            <q-card-section class="row items-center q-pb-sm">
+              <div class="text-h6">Request Changes</div>
+              <q-space />
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                aria-label="Close"
+                :disable="actionReportChangeDialog.saving"
+                @click="closeActionReportChangeDialog"
+              />
+            </q-card-section>
+            <q-card-section class="q-pt-sm">
+              <div class="text-body2 text-grey-7 q-mb-md">
+                Explain the changes required before this action report can proceed.
+              </div>
+              <q-input
+                v-model="actionReportChangeDialog.remarks"
+                type="textarea"
+                outlined
+                autofocus
+                label="Remarks or reason"
+                :rules="[requiredFieldValidation]"
+              />
+            </q-card-section>
+            <q-card-actions align="right">
+              <q-btn
+                flat
+                label="CANCEL"
+                :disable="actionReportChangeDialog.saving"
+                @click="closeActionReportChangeDialog"
+              />
+              <q-btn
+                color="negative"
+                label="PROCEED"
+                type="submit"
+                :loading="actionReportChangeDialog.saving"
+                :disable="actionReportChangeDialog.saving || !actionReportChangeDialog.remarks.trim()"
+              />
+            </q-card-actions>
+          </q-form>
+        </q-card>
+      </q-dialog>
+
       <div v-if="showActionReportSignoff" class="action-signoff-bar">
         <div class="action-signoff-copy">
           <template v-if="actionReportApprovalLabel">
@@ -521,12 +577,14 @@
             @click="approveActionReport"
           />
           <q-btn
-            disable
+            :disable="!canApproveActionReport || signoffSaving"
+            :loading="actionReportChangeDialog.saving"
             outline
             no-caps
             color="secondary"
             icon="rate_review"
             label="Request Changes"
+            @click="openActionReportChangeDialog"
           />
         </div>
         <div v-else-if="isAssignedCoordinator" class="action-signoff-controls">
@@ -604,6 +662,7 @@
 <script>
 import api from 'src/API/api.js'
 import sampleFacultyList from 'src/pages/course_eval/sampleFaculties.json'
+import ActivityLogTimeline from 'src/components/ActivityLogTimeline.vue'
 import myDialog from 'src/plugins/myDialog';
 import { useCookies } from 'vue3-cookies'
 import { io } from 'socket.io-client'
@@ -611,6 +670,10 @@ import { markRaw } from 'vue'
 
 export default {
   name: 'EvaluationDetailsWorkspace',
+
+  components: {
+    ActivityLogTimeline
+  },
 
   data () {
     const { cookies } = useCookies()
@@ -628,6 +691,9 @@ export default {
       // Dynamic Component Data Pools
       actionReports: [],
       actionReportStatus: 'DRAFT',
+      activityLogItems: [],
+      activityLogLoading: false,
+      activityLogLoaded: false,
       responseStats: [],
       ratingScaleProfile: null,
 
@@ -647,6 +713,11 @@ export default {
         show: false,
         indicator: null,
         text: '',
+        saving: false
+      },
+      actionReportChangeDialog: {
+        show: false,
+        remarks: '',
         saving: false
       },
       actionReportSocket: null,
@@ -683,6 +754,9 @@ export default {
   watch: {
     activeTab (newTab) {
       this.$router.replace({ query: { ...this.$route.query, tab: newTab }});
+      if (newTab === 'activity-log-timeline') {
+        this.fetchActivityLogsByEvaluationId();
+      }
     }
   },
 
@@ -1287,10 +1361,15 @@ export default {
         if (!details) throw new Error('Evaluation details were not found.');
 
         this.evaluation = this.normalizeEvaluationDetails(details);
+        this.activityLogItems = [];
+        this.activityLogLoaded = false;
         const actionReport = details.action_report || details.actionReport || {};
         this.actionReportStatus = String(actionReport.status || details.action_report_status || details.actionReportStatus || 'DRAFT').toUpperCase();
         this.actionReports = [];
         await this.fetchActionReportStatus();
+        if (this.activeTab === 'activity-log-timeline' && this.evaluationIsClosed) {
+          await this.fetchActivityLogsByEvaluationId();
+        }
         this.getResponseStats();
         this.fetchClosedEvaluationReportData();
         this.fetchEvaluationMembers();
@@ -1320,6 +1399,39 @@ export default {
           type: 'negative',
           message: error.message || 'Failed to load action report status.'
         });
+      }
+    },
+
+    async fetchActivityLogsByEvaluationId () {
+      if (
+        !this.evaluationIsClosed ||
+        !this.evaluation?._id ||
+        this.activityLogLoaded ||
+        this.activityLogLoading
+      ) return;
+
+      this.activityLogLoading = true;
+      try {
+        const response = await api.getActivityLogsByEvaluationId(this.evaluation._id);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to load activity logs.');
+        }
+
+        const data = response.data;
+        if (Array.isArray(data)) {
+          this.activityLogItems = data;
+        } else {
+          this.activityLogItems = [];
+        }
+        this.activityLogLoaded = true;
+      } catch (error) {
+        this.activityLogItems = [];
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load activity logs.'
+        });
+      } finally {
+        this.activityLogLoading = false;
       }
     },
 
@@ -1656,6 +1768,65 @@ export default {
         this.$q.notify({ type: 'negative', message: error.message || 'Failed to update action report status.' });
       } finally {
         this.signoffSaving = false;
+      }
+    },
+
+    openActionReportChangeDialog () {
+      if (!this.canApproveActionReport || this.actionReportChangeDialog.saving) return;
+
+      this.actionReportChangeDialog = {
+        show: true,
+        remarks: '',
+        saving: false
+      };
+    },
+
+    closeActionReportChangeDialog () {
+      if (this.actionReportChangeDialog.saving) return;
+
+      this.actionReportChangeDialog.show = false;
+      this.actionReportChangeDialog.remarks = '';
+    },
+
+    async proceedWithActionReportChanges () {
+      if (!this.canApproveActionReport || this.actionReportChangeDialog.saving || !this.evaluation?._id) return;
+
+      const reason = this.actionReportChangeDialog.remarks.trim();
+      if (!reason) {
+        this.$q.notify({ type: 'warning', message: 'Please enter remarks or a reason for the requested changes.' });
+        return;
+      }
+
+      const confirmed = await myDialog.confirm(
+        this.$q,
+        'Confirm Request Changes',
+        'Send this action report back for changes using the remarks you entered?'
+      );
+      if (!confirmed) return;
+
+      this.actionReportChangeDialog.saving = true;
+      try {
+        const response = await api.declineActionReport(this.evaluation._id, reason);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to request changes.');
+        }
+
+        const report = Array.isArray(response.data) ? response.data[0] : response.data;
+        const status = report?.status || report?.action_report_status || report?.actionReportStatus || 'DRAFT';
+        this.actionReportStatus = String(status).trim().toUpperCase();
+        this.activityLogLoaded = false;
+        if (this.activeTab === 'activity-log-timeline') {
+          this.activityLogItems = [];
+        }
+
+        this.actionReportChangeDialog.show = false;
+        this.actionReportChangeDialog.remarks = '';
+        await this.fetchActionReportStatus();
+        this.$q.notify({ type: 'positive', message: 'Changes requested. The action report was returned for revision.' });
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to request changes.' });
+      } finally {
+        this.actionReportChangeDialog.saving = false;
       }
     },
 
