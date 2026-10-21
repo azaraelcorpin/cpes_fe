@@ -64,6 +64,7 @@
         </q-input>
 
         <q-select
+          v-if="canViewFormStatus"
           v-model="statusFilter"
           class="col-12 col-md-3"
           outlined
@@ -642,13 +643,19 @@ export default {
     },
 
     canViewCollege () {
-      return ['admin', 'VCAA', 'CCSID'].some(role => this.currentUserRoles.includes(role));
+      return ['admin', 'VCAA', 'CCSID'].some(role => this.currentUserRoles.includes(role.toUpperCase()));
+    },
+
+    canViewFormStatus () {
+      return ['FACULTY', 'CHAIRPERSON','ADMIN'].some(role => this.currentUserRoles.includes(role.toUpperCase()));
     },
 
     visibleColumns () {
-      return this.canViewCollege
-        ? this.columns
-        : this.columns.filter(column => column.name !== 'college_code');
+      return this.columns.filter(column => {
+        if (column.name === 'college_code' && !this.canViewCollege) return false;
+        if (column.name === 'status' && !this.canViewFormStatus) return false;
+        return true;
+      });
     },
 
     visibleViewOptions () {
