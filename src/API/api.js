@@ -613,8 +613,8 @@ export default {
       }
     },
 
-    async updateEvaluation(payload){
-      var path = '/api/course-evaluation/evaluations/update'
+    async updateStatusEvaluation(payload){
+      var path = '/api/course-evaluation/evaluations/updateStatus'
       var url = `${api_url}${path}`
       const config = await this.getAuthorization(path);
       const body = payload

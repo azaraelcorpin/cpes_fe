@@ -1116,7 +1116,7 @@ export default {
         status: nextStatus
       }
       try {
-        const response = await api.updateEvaluation(statusPayload);
+        const response = await api.updateStatusEvaluation(statusPayload);
         if (!response || response.error || !response.success) {
           throw new Error(response?.error?.response?.data?.message || 'Failed to update evaluation status.');
         }

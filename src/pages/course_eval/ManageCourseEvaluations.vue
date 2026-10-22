@@ -136,7 +136,18 @@
         <template #header="props">
           <q-tr :props="props" class="bg-grey-2 text-grey-8">
             <q-th
-              v-for="col in props.cols"
+              v-if="canBulkUpdate"
+              auto-width
+              class="text-center"
+            >
+              <q-checkbox
+                :model-value="allFilteredEvaluationsSelected"
+                :indeterminate="someFilteredEvaluationsSelected && !allFilteredEvaluationsSelected"
+                @update:model-value="toggleFilteredEvaluationSelection"
+              />
+            </q-th>
+            <q-th
+              v-for="col in props.cols.filter(column => column.name !== 'bulk-selection')"
               :key="col.name"
               :props="props"
               class="text-subtitle2"
@@ -150,6 +161,12 @@
         <!-- Body Row Linkage Interceptors -->
         <template #body="props">
           <q-tr :props="props" class="transition-hover">
+            <q-td v-if="canBulkUpdate" auto-width class="text-center">
+              <q-checkbox
+                :model-value="isEvaluationSelected(props.row)"
+                @update:model-value="toggleEvaluationSelection(props.row)"
+              />
+            </q-td>
             <q-td key="acad_year" :props="props">
               {{ props.row.acad_year }}
             </q-td>
@@ -225,6 +242,51 @@
           </q-tr>
         </template>
       </q-table>
+
+      <q-card-section
+        v-if="canBulkUpdate && currentView === 'table' && selectedEvaluations.length"
+        class="row items-center q-gutter-sm q-pt-none bulk-actions-toolbar"
+      >
+        <div class="text-caption text-grey-7">
+          {{ selectedEvaluations.length }} selected
+        </div>
+        <template v-if="bulkActionRole === 'CHAIRPERSON'">
+          <q-select
+            v-model="bulkEvaluationStatus"
+            dense
+            outlined
+            emit-value
+            map-options
+            :options="statusOptions.map(status => ({ label: status, value: status }))"
+            label="New Form Status"
+            style="min-width: 180px"
+          />
+          <q-btn
+            unelevated
+            color="primary"
+            label="Update Status"
+            :loading="bulkUpdating"
+            :disable="!bulkEvaluationStatus || bulkUpdating"
+            @click="bulkUpdateEvaluationStatus"
+          />
+        </template>
+        <q-btn
+          v-else
+          unelevated
+          color="primary"
+          :label="`Bulk ${bulkActionLabel}`"
+          :loading="bulkUpdating"
+          :disable="bulkUpdating"
+          @click="bulkUpdateActionReportStatus"
+        />
+        <q-btn
+          flat
+          dense
+          label="Clear Selection"
+          :disable="bulkUpdating"
+          @click="selectedEvaluations = []"
+        />
+      </q-card-section>
 
       <!-- Card View -->
       <q-card-section v-else-if="currentView === 'card' || (currentView === 'pipeline' && !canManageEvaluations)" class="bg-grey-1">
@@ -523,8 +585,11 @@ export default {
     return {
       cookies,
       evaluations: [],
+      selectedEvaluations: [],
       loading: false,
       saving: false,
+      bulkUpdating: false,
+      bulkEvaluationStatus: null,
       dialog: false,
       editing: false,
       draggedEvaluation: null,
@@ -650,12 +715,45 @@ export default {
       return ['FACULTY', 'CHAIRPERSON','ADMIN'].some(role => this.currentUserRoles.includes(role.toUpperCase()));
     },
 
+    canBulkUpdate () {
+      return ['CHAIRPERSON', 'DEAN', 'CCSID', 'VCAA'].some(role =>
+        this.currentUserRoles.includes(role)
+      );
+    },
+
+    bulkActionRole () {
+      return ['CHAIRPERSON', 'DEAN', 'CCSID', 'VCAA'].find(role =>
+        this.currentUserRoles.includes(role)
+      ) || '';
+    },
+
+    bulkActionLabel () {
+      return {
+        DEAN: 'ENDORSE',
+        CCSID: 'CHECKED',
+        VCAA: 'APPROVE'
+      }[this.bulkActionRole] || '';
+    },
+
+    allFilteredEvaluationsSelected () {
+      return this.filteredEvaluations.length > 0 &&
+        this.filteredEvaluations.every(row => this.isEvaluationSelected(row));
+    },
+
+    someFilteredEvaluationsSelected () {
+      return this.filteredEvaluations.some(row => this.isEvaluationSelected(row));
+    },
+
     visibleColumns () {
-      return this.columns.filter(column => {
+      const columns = this.columns.filter(column => {
         if (column.name === 'college_code' && !this.canViewCollege) return false;
         if (column.name === 'status' && !this.canViewFormStatus) return false;
         return true;
       });
+
+      return this.canBulkUpdate
+        ? [{ name: 'bulk-selection', label: '', field: '_id', align: 'center' }, ...columns]
+        : columns;
     },
 
     visibleViewOptions () {
@@ -699,11 +797,22 @@ export default {
   },
 
   watch: {
+    filter () {
+      this.selectedEvaluations = [];
+    },
+    statusFilter () {
+      this.selectedEvaluations = [];
+    },
     acadYearFilter () {
+      this.selectedEvaluations = [];
       if (this.evaluationFiltersInitialized) this.getEvaluations();
     },
     semesterFilter () {
+      this.selectedEvaluations = [];
       if (this.evaluationFiltersInitialized) this.getEvaluations();
+    },
+    collegeFilter () {
+      this.selectedEvaluations = [];
     }
   },
 
@@ -715,6 +824,137 @@ export default {
   },
 
   methods: {
+    isEvaluationSelected (evaluation) {
+      return this.selectedEvaluations.some(item => String(item._id) === String(evaluation._id));
+    },
+
+    toggleEvaluationSelection (evaluation) {
+      if (this.isEvaluationSelected(evaluation)) {
+        this.selectedEvaluations = this.selectedEvaluations.filter(
+          item => String(item._id) !== String(evaluation._id)
+        );
+        return;
+      }
+
+      this.selectedEvaluations = [...this.selectedEvaluations, evaluation];
+    },
+
+    toggleFilteredEvaluationSelection (selected) {
+      const filteredIds = new Set(this.filteredEvaluations.map(row => String(row._id)));
+      const otherSelections = this.selectedEvaluations.filter(
+        row => !filteredIds.has(String(row._id))
+      );
+
+      this.selectedEvaluations = selected
+        ? [...otherSelections, ...this.filteredEvaluations]
+        : otherSelections;
+    },
+
+    async bulkUpdateEvaluationStatus () {
+      if (
+        this.bulkActionRole !== 'CHAIRPERSON' ||
+        !this.selectedEvaluations.length ||
+        !this.bulkEvaluationStatus ||
+        this.bulkUpdating
+      ) return;
+
+      const selectedRows = [...this.selectedEvaluations];
+      const confirmed = await myDialog.confirm(
+        this.$q,
+        'Confirm Bulk Status Update',
+        `Change the Form Status of ${selectedRows.length} selected evaluation(s) to ${this.bulkEvaluationStatus}?`
+      );
+      if (!confirmed) return;
+
+      this.bulkUpdating = true;
+      const failures = [];
+      try {
+        for (const evaluation of selectedRows) {
+          try {
+            const response = await api.updateStatusEvaluation({
+              _id: evaluation._id,
+              status: this.bulkEvaluationStatus
+            });
+            if (!response || response.error || !response.success) {
+              failures.push(evaluation.course_code || evaluation._id);
+            }
+          } catch (error) {
+            failures.push(evaluation.course_code || evaluation._id);
+          }
+        }
+
+        await this.getEvaluations();
+        this.selectedEvaluations = [];
+        if (failures.length) {
+          this.$q.notify({
+            type: 'negative',
+            message: `Updated ${selectedRows.length - failures.length} evaluation(s); failed to update: ${failures.join(', ')}.`
+          });
+          return;
+        }
+
+        this.$q.notify({
+          type: 'positive',
+          message: `Updated ${selectedRows.length} evaluation(s) to ${this.bulkEvaluationStatus}.`
+        });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to refresh evaluations after bulk status update.'
+        });
+      } finally {
+        this.bulkUpdating = false;
+      }
+    },
+
+    async bulkUpdateActionReportStatus () {
+      if (
+        !['DEAN', 'CCSID', 'VCAA'].includes(this.bulkActionRole) ||
+        !this.selectedEvaluations.length ||
+        this.bulkUpdating
+      ) return;
+
+      const selectedRows = [...this.selectedEvaluations];
+      const confirmed = await myDialog.confirm(
+        this.$q,
+        `Confirm Bulk ${this.bulkActionLabel}`,
+        `Apply ${this.bulkActionLabel} to ${selectedRows.length} selected action report(s)?`
+      );
+      if (!confirmed) return;
+
+      this.bulkUpdating = true;
+      try {
+        const bulkActions = {
+          DEAN: () => api.bulkEndorseActionReports(selectedRows),
+          CCSID: () => api.bulkCheckActionReports(selectedRows),
+          VCAA: () => api.bulkApproveActionReports(selectedRows)
+        };
+        const response = await bulkActions[this.bulkActionRole]();
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || `Bulk ${this.bulkActionLabel.toLowerCase()} failed.`);
+        }
+        if(response.data?.failures?.length) {
+          this.$q.notify({
+            type: 'negative',
+            message: `Bulk ${this.bulkActionLabel.toLowerCase()} completed with failures for the following evaluations: ${response.data.failures.join(', ')}.`
+          });
+        }
+        await this.getEvaluations();
+        this.selectedEvaluations = [];
+        this.$q.notify({
+          type: 'positive',
+          message: `Bulk ${this.bulkActionLabel.toLowerCase()} completed.`
+        });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || `Bulk ${this.bulkActionLabel.toLowerCase()} failed.`
+        });
+      } finally {
+        this.bulkUpdating = false;
+      }
+    },
+
     async loadAcademicYears () {
       try {
         const response = await api.getAllAcadYears();
@@ -812,7 +1052,7 @@ export default {
                   const evaluationPayload = evaluation
                     const confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Please confirm to save Evaluation');
                       if (!confirm) return;
-                      const response = await api.updateEvaluation(evaluationPayload)
+                      const response = await api.updateStatusEvaluation(evaluationPayload)
                       if(!response.success)
                         throw new Error(response.error.response.data.message || 'Failed to update evaluation');
                 } catch (error) {
@@ -994,7 +1234,7 @@ export default {
           const evaluationPayload = {...this.form}
             const confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Please confirm to save Evaluation');
               if (!confirm) return;
-              const response = await api.updateEvaluation(evaluationPayload)
+              const response = await api.updateStatusEvaluation(evaluationPayload)
               if(!response.success)
                 throw new Error(response.error.response.data.message || 'Failed to update evaluation');
         } catch (error) {
