@@ -369,6 +369,7 @@
             :evaluation="evaluation"
             :summary-rows="summaryDisplayRows"
             :rating-scale-legend="ratingScaleLegend"
+            :action-report-rows="actionReportPrintRows"
           />
         </q-tab-panel>
 
@@ -920,6 +921,22 @@ export default {
       return (this.evaluation?.indicators || []).filter(indicator =>
         String(indicator.indicator_name || '').trim().toLowerCase() !== 'overall'
       );
+    },
+
+    actionReportPrintRows () {
+      return this.actionReportIndicators.map(indicator => {
+        const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
+        const report = this.actionReports.find(item => String(item.indicator_id) === String(indicatorId));
+
+        return {
+          id: indicatorId,
+          name: indicator.indicator_name || indicator.name || 'Indicator',
+          items: this.lowestRatedItemsFor(indicator)
+            .map(item => item.name || item.item_name)
+            .filter(Boolean),
+          action: report?.action || ''
+        };
+      });
     },
 
     ratingScaleLegend () {

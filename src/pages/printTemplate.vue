@@ -66,7 +66,7 @@
                 </div>
 
                 <p class="form-instructions">
-                  <strong>Instructions:</strong> This SUBJECTIVE COURSE EVALUATION FORM is to be prepared and accomplished by each course adviser based on the results of the subjective course evaluation survey answered by all students in the class. The survey is conducted toward the end of the semester. The following scale shall be used:
+                  <strong>Instructions:</strong> This SUBJECTIVE COURSE EVALUATION FORM is to be prepared and accomplished by each course coordinator based on the results of the subjective course evaluation survey answered by all students in the class. The survey is conducted toward the end of the semester. The following scale shall be used:
                 </p>
 
                 <section class="rating-legend rating-legend-top" aria-label="Rating scale legend">
@@ -131,6 +131,40 @@
                   </span>
                   <span v-else>No rating scale legend available.</span>
                 </section>
+
+                <table class="action-report-table" aria-label="Subjective course evaluation action report">
+                  <thead>
+                    <tr>
+                      <th colspan="2">Subjective Course Evaluation Action Report</th>
+                    </tr>
+                    <tr>
+                      <th scope="col">Remarks</th>
+                      <th scope="col">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <template v-for="(row, index) in actionReportRows" :key="row.id || `${row.name}-${index}`">
+                      <tr class="action-report-indicator">
+                        <th colspan="2" scope="rowgroup">{{ romanNumeral(index + 1) }}. {{ row.name }}</th>
+                      </tr>
+                      <tr class="action-report-details">
+                        <td>
+                          <strong>Significantly Lowest Rated Item/s:</strong>
+                          <div v-if="row.items.length">
+                            <div v-for="(item, itemIndex) in row.items" :key="`${row.id || index}-item-${itemIndex}`">
+                              - {{ item }}
+                            </div>
+                          </div>
+                          <div v-else>- None</div>
+                        </td>
+                        <td>{{ row.action || '—' }}</td>
+                      </tr>
+                    </template>
+                    <tr v-if="!actionReportRows.length">
+                      <td colspan="2" class="action-report-empty">No action report data available.</td>
+                    </tr>
+                  </tbody>
+                </table>
               </section>
             </td>
           </tr>
@@ -175,6 +209,10 @@ const props = defineProps({
   ratingScaleLegend: {
     type: Array,
     default: () => []
+  },
+  actionReportRows: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -208,6 +246,11 @@ function formatLegendEntry(scale) {
 
 function formatInterpretationEntry(scale) {
   return `${scale.min_value}–${scale.max_value}: ${scale.interpretation}`
+}
+
+function romanNumeral(value) {
+  const numerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+  return numerals[value - 1] || String(value)
 }
 
 function printDocument() {
@@ -454,6 +497,60 @@ function printDocument() {
 }
 
 .summary-empty {
+  text-align: center !important;
+}
+
+.action-report-table {
+  width: 100%;
+  margin-top: 12px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  color: #111;
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+.action-report-table th,
+.action-report-table td {
+  padding: 3px 4px;
+  border: 1px solid #222;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.action-report-table thead tr:first-child th {
+  background: #fff;
+  color: #111;
+  font-size: 10px;
+  text-align: center;
+}
+
+.action-report-table thead tr:nth-child(2) th {
+  font-weight: 700;
+}
+
+.action-report-indicator {
+  break-after: avoid;
+  page-break-after: avoid;
+  font-style: italic;
+}
+
+.action-report-indicator th {
+  padding-top: 4px;
+  padding-bottom: 2px;
+}
+
+.action-report-details {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.action-report-details td:last-child {
+  white-space: pre-line;
+}
+
+.action-report-empty {
   text-align: center !important;
 }
 
