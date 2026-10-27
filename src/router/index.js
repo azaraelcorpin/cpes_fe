@@ -11,7 +11,7 @@ function handleRouteNavigationAndTitleChange(to, from, next) {
 
   document.title = process.env.VUE_APP_NAME + '-' + to.meta.title;
   
-  if (to.name === 'signIn'|| to.name === 'accessDenied' || to.name === 'catchAll' || cookies.isKey('_UID_')) {
+  if (to.name === 'signIn'|| to.name === 'accessDenied' || to.name === 'catchAll' || to.name === 'printTemplate' || cookies.isKey('_UID_')) {
     
     if(cookies.isKey('_UID_') && !(to.name === 'signIn'|| to.name === 'accessDenied' || to.name === 'catchAll'))
       checkRoles(to,from,next)

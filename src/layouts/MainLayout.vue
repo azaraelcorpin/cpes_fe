@@ -170,7 +170,7 @@ export default defineComponent({
     const monitorCookie = () => {
       intervalId = setInterval(() => {
         console.log('Monitoring',cookies.isKey('_UID_'))
-        if(!cookies.isKey('_UID_')){
+        if(!cookies.isKey('_UID_') && router.currentRoute.value.name !== 'printTemplate'){
               localStorage.clear();
               router.push({name:'signIn'});
         }

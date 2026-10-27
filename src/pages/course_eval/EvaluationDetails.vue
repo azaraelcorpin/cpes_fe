@@ -71,6 +71,7 @@
         <q-tab name="details" icon="account_tree" label="Details" />
         <q-tab name="summary" icon="insights" label="Summary" />
         <q-tab name="action-report" icon="assignment_turned_in" label="Action Report" />
+        <q-tab v-if="actionReportStatus !== 'DRAFT'" name="print-template" icon="description" label="Print Template" />
         <q-tab v-if="evaluationIsClosed" name="activity-log-timeline" icon="history" label="Activity Log Timeline" />
         <q-tab name="members" icon="groups" label="Members" />
       </q-tabs>
@@ -361,6 +362,14 @@
             </q-list>
           </q-card>
           </div>
+        </q-tab-panel>
+
+        <q-tab-panel v-if="actionReportStatus !== 'DRAFT'" name="print-template" class="q-pa-none">
+          <PrintTemplate
+            :evaluation="evaluation"
+            :summary-rows="summaryDisplayRows"
+            :rating-scale-legend="ratingScaleLegend"
+          />
         </q-tab-panel>
 
         <q-tab-panel v-if="evaluationIsClosed" name="activity-log-timeline" class="q-pa-none">
@@ -663,6 +672,7 @@
 import api from 'src/API/api.js'
 import sampleFacultyList from 'src/pages/course_eval/sampleFaculties.json'
 import ActivityLogTimeline from 'src/components/ActivityLogTimeline.vue'
+import PrintTemplate from 'src/pages/printTemplate.vue'
 import myDialog from 'src/plugins/myDialog';
 import { useCookies } from 'vue3-cookies'
 import { io } from 'socket.io-client'
@@ -672,7 +682,8 @@ export default {
   name: 'EvaluationDetailsWorkspace',
 
   components: {
-    ActivityLogTimeline
+    ActivityLogTimeline,
+    PrintTemplate
   },
 
   data () {

@@ -184,7 +184,17 @@ const routes = [
 
   // #endregion System Admin
 
-
+{
+  path:'/printTemplate',
+  name:'printTemplate',
+  component: () => import('../pages/printTemplate.vue'),
+  meta:{
+    title:'Print Template',
+    roles:[]
+  },
+  icon:'print',
+  visible:true,
+},
 
   // Always leave this as last one,
   // but you can also remove it
