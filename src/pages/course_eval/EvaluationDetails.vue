@@ -370,6 +370,7 @@
             :summary-rows="summaryDisplayRows"
             :rating-scale-legend="ratingScaleLegend"
             :action-report-rows="actionReportPrintRows"
+            :approval-history="activityLogItems"
           />
         </q-tab-panel>
 
@@ -766,7 +767,7 @@ export default {
   watch: {
     activeTab (newTab) {
       this.$router.replace({ query: { ...this.$route.query, tab: newTab }});
-      if (newTab === 'activity-log-timeline') {
+      if (newTab === 'activity-log-timeline' || newTab === 'print-template') {
         this.fetchActivityLogsByEvaluationId();
       }
     }
@@ -934,6 +935,7 @@ export default {
           items: this.lowestRatedItemsFor(indicator)
             .map(item => item.name || item.item_name)
             .filter(Boolean),
+          comments: this.commentsForIndicator(indicator),
           action: report?.action || ''
         };
       });
@@ -1395,7 +1397,10 @@ export default {
         this.actionReportStatus = String(actionReport.status || details.action_report_status || details.actionReportStatus || 'DRAFT').toUpperCase();
         this.actionReports = [];
         await this.fetchActionReportStatus();
-        if (this.activeTab === 'activity-log-timeline' && this.evaluationIsClosed) {
+        if (
+          ['activity-log-timeline', 'print-template'].includes(this.activeTab) &&
+          this.evaluationIsClosed
+        ) {
           await this.fetchActivityLogsByEvaluationId();
         }
         this.getResponseStats();

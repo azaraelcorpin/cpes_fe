@@ -18,7 +18,195 @@
       </div>
     </section>
 
-    <main class="print-canvas" aria-label="Subjective course evaluation form">
+    <main class="preview-pages" aria-label="Paginated document preview">
+      <article
+        v-for="page in previewPages"
+        :key="page.number"
+        class="preview-sheet"
+        :aria-label="`Document page ${page.number} of ${previewPages.length}`"
+      >
+        <header class="form-header">
+          <div class="form-seal">
+            <img
+              src="~assets/MSU_Gensan_logo.png"
+              alt="Mindanao State University General Santos seal"
+            />
+          </div>
+          <div class="form-header-content">
+            <div class="institution-heading">
+              <h1>Mindanao State University - General Santos</h1>
+              <p>Fatima, General Santos City, 9500, Philippines</p>
+            </div>
+            <div class="metadata-row metadata-primary">
+              <div>SCE-MSU-GSC-CCSID</div>
+              <div class="form-name">SUBJECTIVE COURSE EVALUATION</div>
+              <div>Page {{ page.number }} of {{ previewPages.length }}</div>
+            </div>
+            <div class="metadata-row metadata-secondary">
+              <div>Revision No.: <span class="blank-field"></span></div>
+              <div>Effective Date: December 3, 2025</div>
+              <div>Document No.: 007</div>
+            </div>
+          </div>
+        </header>
+
+        <section class="preview-document-body">
+          <template v-if="page.showIntro">
+            <div class="course-details">
+              <div><strong>Semester and Academic Year:</strong> {{ semesterLabel }} {{ evaluation?.acad_year || '—' }}</div>
+              <div><strong>Course Code:</strong> {{ evaluation?.course_code || '—' }}</div>
+              <div><strong>Course Title:</strong> {{ evaluation?.course_title || '—' }}</div>
+              <div><strong>Course Coordinator:</strong> {{ courseCoordinator }}</div>
+            </div>
+
+            <p class="form-instructions">
+              <strong>Instructions:</strong> This SUBJECTIVE COURSE EVALUATION FORM is to be prepared and accomplished by each course coordinator based on the results of the subjective course evaluation survey answered by all students in the class. The survey is conducted toward the end of the semester. The following scale shall be used:
+            </p>
+
+            <section class="rating-legend rating-legend-top" aria-label="Rating scale legend">
+              <strong>Rating Scale Legend:</strong>
+              <span v-if="ratingScaleLegend.length">
+                <span v-for="(scale, index) in ratingScaleLegend" :key="scale._id || scale.id || scale.range">
+                  <template v-if="index"> | </template>{{ formatLegendEntry(scale) }}
+                </span>
+              </span>
+              <span v-else>No rating scale legend available.</span>
+            </section>
+          </template>
+
+          <table v-if="page.showSummaryTable" class="summary-table" aria-label="Subjective course evaluation summary report">
+            <caption>Subjective Course Evaluation Summary Report</caption>
+            <colgroup>
+              <col class="summary-label-column" />
+              <col class="summary-mean-column" />
+              <col class="summary-description-column" />
+              <col class="summary-interpretation-column" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col">Indicators</th>
+                <th scope="col">Mean</th>
+                <th scope="col">Description</th>
+                <th scope="col">Interpretation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(row, index) in page.summaryRows" :key="`${row.indicatorKey || 'indicator'}-${row.itemKey || 'row'}-${index}`">
+                <tr v-if="row.isHeader" class="summary-header-row">
+                  <th colspan="4" scope="rowgroup">{{ row.label }}</th>
+                </tr>
+                <tr v-else-if="row.isOverallSpacer" class="summary-overall-spacer-row">
+                  <td colspan="4"></td>
+                </tr>
+                <tr
+                  v-else
+                  :class="{
+                    'summary-overall-footer-row': row.isOverallFooter,
+                    'summary-total-average-row': row.label === 'Total Average'
+                  }"
+                >
+                  <th scope="row">{{ row.label }}</th>
+                  <td>{{ formatMean(row.mean) }}</td>
+                  <td>{{ row.description || '' }}</td>
+                  <td>{{ row.interpretation || '' }}</td>
+                </tr>
+              </template>
+              <tr v-if="page.showSummaryEmpty">
+                <td colspan="4" class="summary-empty">No response summary available.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <section v-if="page.showInterpretation" class="rating-legend rating-legend-bottom" aria-label="Rating scale interpretation">
+            <strong>Interpretation:</strong>
+            <span v-if="ratingScaleLegend.length">
+              <span v-for="(scale, index) in ratingScaleLegend" :key="scale._id || scale.id || scale.range">
+                <template v-if="index"> | </template>{{ formatInterpretationEntry(scale) }}
+              </span>
+            </span>
+            <span v-else>No rating scale legend available.</span>
+          </section>
+
+          <table v-if="page.showActionReport" class="action-report-table" aria-label="Subjective course evaluation action report">
+            <thead>
+              <tr>
+                <th colspan="2">Subjective Course Evaluation Action Report</th>
+              </tr>
+              <tr>
+                <th scope="col">Remarks</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-for="(row, index) in page.actionRows" :key="row.id || `${row.name}-${index}`">
+                <tr class="action-report-indicator">
+                  <th colspan="2" scope="rowgroup">{{ romanNumeral(row.index + 1) }}. {{ row.name }}</th>
+                </tr>
+                <tr class="action-report-details">
+                  <td>
+                    <strong>Significantly Lowest Rated Item/s:</strong>
+                    <div v-if="row.items.length">
+                      <div v-for="(item, itemIndex) in row.items" :key="`${row.id || index}-item-${itemIndex}`">
+                        - {{ item }}
+                      </div>
+                    </div>
+                    <div v-else>- None</div>
+                    <div class="action-report-comments">
+                      <strong>Student Comments and Suggestions:</strong>
+                      <div v-if="row.comments.length">
+                        <div v-for="(comment, commentIndex) in row.comments" :key="`${row.id || index}-comment-${commentIndex}`">
+                          - {{ comment }}
+                        </div>
+                      </div>
+                      <div v-else>- None</div>
+                    </div>
+                  </td>
+                  <td>{{ row.action || '—' }}</td>
+                </tr>
+              </template>
+              <tr v-if="page.showActionReportEmpty">
+                <td colspan="2" class="action-report-empty">No action report data available.</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <section
+            v-if="page.showSignatories"
+            class="action-report-signatories"
+            aria-label="Action report signatories"
+          >
+            <div
+              v-for="signatory in latestActionReportSignatories"
+              :key="signatory.status"
+              class="action-report-signatory"
+            >
+              <strong>{{ signatory.label }}:</strong>
+              <span v-if="signatory.entry" class="action-report-signatory-meta">
+                <span>{{ signatory.entry.email }}</span>
+                <span>{{ formatSignatoryTimestamp(signatory.entry.acted_at) }}</span>
+              </span>
+            </div>
+          </section>
+        </section>
+
+        <footer class="form-footer preview-page-footer" aria-label="Document approvals">
+          <section class="approval-cell">
+            <h2>Prepared by</h2>
+            <div class="signature-space"></div>
+          </section>
+          <section class="approval-cell">
+            <h2>Reviewed by</h2>
+            <div class="signature-space"></div>
+          </section>
+          <section class="approval-cell">
+            <h2>Approved by / Recommended by</h2>
+            <div class="signature-space"></div>
+          </section>
+        </footer>
+      </article>
+    </main>
+
+    <main class="print-canvas print-source" aria-label="Subjective course evaluation form">
       <table class="print-document">
         <thead>
           <tr>
@@ -156,6 +344,15 @@
                             </div>
                           </div>
                           <div v-else>- None</div>
+                          <div class="action-report-comments">
+                            <strong>Student Comments and Suggestions:</strong>
+                            <div v-if="row.comments.length">
+                              <div v-for="(comment, commentIndex) in row.comments" :key="`${row.id || index}-comment-${commentIndex}`">
+                                - {{ comment }}
+                              </div>
+                            </div>
+                            <div v-else>- None</div>
+                          </div>
                         </td>
                         <td>{{ row.action || '—' }}</td>
                       </tr>
@@ -213,8 +410,202 @@ const props = defineProps({
   actionReportRows: {
     type: Array,
     default: () => []
+  },
+  approvalHistory: {
+    type: Array,
+    default: () => []
   }
 })
+
+const latestActionReportSignatories = computed(() => {
+  const sortedItems = props.approvalHistory
+    .filter(item => item && typeof item === 'object')
+    .map((item, index) => ({ ...item, _originalIndex: index }))
+    .sort((first, second) => {
+      const firstTime = first.acted_at ? new Date(first.acted_at).getTime() : Number.NaN
+      const secondTime = second.acted_at ? new Date(second.acted_at).getTime() : Number.NaN
+      const firstValid = Number.isFinite(firstTime)
+      const secondValid = Number.isFinite(secondTime)
+
+      if (!firstValid && !secondValid) return first._originalIndex - second._originalIndex
+      if (!firstValid) return 1
+      if (!secondValid) return -1
+      return firstTime - secondTime || first._originalIndex - second._originalIndex
+    })
+
+  const rounds = []
+  let currentRound = null
+  for (const item of sortedItems) {
+    const status = String(item.status || '').trim().toUpperCase()
+    if (!status) continue
+
+    if (!currentRound || (status === 'SUBMITTED' && currentRound.length > 0)) {
+      currentRound = []
+      rounds.push(currentRound)
+    }
+
+    currentRound.push({ ...item, status })
+  }
+
+  const latestRound = rounds[rounds.length - 1] || []
+  const roles = [
+    { status: 'SUBMITTED', label: 'Prepared by' },
+    { status: 'REVIEWED', label: 'Reviewed by' },
+    { status: 'ENDORSED', label: 'Endorsed by' },
+    { status: 'CHECKED', label: 'Checked by' },
+    { status: 'APPROVED', label: 'Approved by' }
+  ]
+
+  return roles.map(role => ({
+    ...role,
+    entry: latestRound.filter(item => item.status === role.status).slice(-1)[0] || null
+  }))
+})
+
+const previewPages = computed(() => {
+  const pageCapacity = 740
+  const signatoriesHeight = 100
+  const pages = []
+  let page = createPage(true)
+  page.usedHeight = estimateIntroHeight()
+
+  const startPage = () => {
+    pages.push(page)
+    page = createPage(false)
+  }
+  const addSummaryTable = () => {
+    page.showSummaryTable = true
+    page.usedHeight += 40
+  }
+
+  if (props.summaryRows.length) {
+    addSummaryTable()
+    for (const row of props.summaryRows) {
+      const height = estimateSummaryRowHeight(row)
+      if (page.usedHeight + height > pageCapacity && (page.summaryRows.length || page.showIntro)) {
+        startPage()
+        addSummaryTable()
+      }
+      page.summaryRows.push(row)
+      page.usedHeight += height
+    }
+  } else {
+    page.showSummaryTable = true
+    page.showSummaryEmpty = true
+    page.usedHeight += 64
+  }
+
+  const interpretationHeight = estimateInterpretationHeight()
+  const actionHeaderHeight = 42
+  if (
+    page.usedHeight + interpretationHeight > pageCapacity &&
+    (page.showIntro || page.summaryRows.length)
+  ) {
+    startPage()
+  }
+
+  page.showInterpretation = true
+  page.usedHeight += interpretationHeight
+
+  pages.push(page)
+  page = createPage(false)
+  page.showActionReport = true
+  page.usedHeight += actionHeaderHeight
+
+  if (props.actionReportRows.length) {
+    props.actionReportRows.forEach((row, index) => {
+      const height = estimateActionRowHeight(row)
+      const reservedSignatoryHeight = index === props.actionReportRows.length - 1
+        ? signatoriesHeight
+        : 0
+      if (
+        page.usedHeight + height + reservedSignatoryHeight > pageCapacity &&
+        page.actionRows.length
+      ) {
+        startPage()
+        page.showActionReport = true
+        page.usedHeight = actionHeaderHeight
+      }
+      page.actionRows.push({ ...row, index })
+      page.usedHeight += height
+    })
+  } else {
+    page.showActionReportEmpty = true
+  }
+
+  page.showSignatories = true
+  page.usedHeight += signatoriesHeight
+  pages.push(page)
+  return pages.map((item, index) => ({
+    ...item,
+    number: index + 1
+  }))
+})
+
+function createPage(showIntro) {
+  return {
+    showIntro,
+    showSummaryTable: false,
+    showSummaryEmpty: false,
+    summaryRows: [],
+    showInterpretation: false,
+    showActionReport: false,
+    showActionReportEmpty: false,
+    showSignatories: false,
+    actionRows: [],
+    usedHeight: 0
+  }
+}
+
+function estimateTextLines(value, charactersPerLine) {
+  const text = String(value || '').trim()
+  return text ? Math.max(1, Math.ceil(text.length / charactersPerLine)) : 1
+}
+
+function estimateIntroHeight() {
+  const courseTitleHeight = estimateTextLines(props.evaluation?.course_title, 100) * 15
+  const legendText = props.ratingScaleLegend.map(formatLegendEntry).join(' | ')
+  const legendHeight = estimateTextLines(legendText, 120) * 12 + 12
+  return 60 + courseTitleHeight + 40 + legendHeight + 20
+}
+
+function estimateSummaryRowHeight(row) {
+  if (row.isOverallSpacer) return 7
+  if (row.isHeader) return 20
+
+  const lines = Math.max(
+    estimateTextLines(row.label, 82),
+    estimateTextLines(formatMean(row.mean), 12),
+    estimateTextLines(row.description, 25),
+    estimateTextLines(row.interpretation, 25)
+  )
+  return Math.max(18, lines * 11 + 6)
+}
+
+function estimateInterpretationHeight() {
+  const text = props.ratingScaleLegend.map(formatInterpretationEntry).join(' | ')
+  return estimateTextLines(text, 120) * 12 + 10
+}
+
+function estimateActionRowHeight(row) {
+  const itemLines = (row.items || []).reduce(
+    (total, item) => total + estimateTextLines(item, 72),
+    0
+  )
+  const commentLines = (row.comments || []).reduce(
+    (total, comment) => total + estimateTextLines(comment, 72),
+    0
+  )
+  const actionLines = estimateTextLines(row.action || '—', 72)
+  return Math.max(30, 42 + (1 + itemLines + commentLines) * 11, actionLines * 11 + 21)
+}
+
+function formatSignatoryTimestamp(value) {
+  if (!value) return ''
+
+  const timestamp = new Date(value)
+  return Number.isNaN(timestamp.getTime()) ? String(value) : timestamp.toLocaleString()
+}
 
 const courseCoordinator = computed(() => {
   const coordinator = (props.evaluation?.members || []).find(member =>
@@ -550,8 +941,39 @@ function printDocument() {
   white-space: pre-line;
 }
 
+.action-report-comments {
+  margin-top: 12px;
+}
+
 .action-report-empty {
   text-align: center !important;
+}
+
+.action-report-signatories {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 24px;
+  row-gap: 24px;
+  margin: 24px 4px 0;
+  color: #111;
+  font-size: 9px;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.action-report-signatory {
+  min-width: 0;
+  min-height: 34px;
+}
+
+.action-report-signatory-meta {
+  display: flex;
+  flex-direction: column;
+  margin-top: 5px;
+  color: #777;
+  font-size: 8px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .form-footer {
@@ -582,6 +1004,44 @@ function printDocument() {
 }
 
 @media screen {
+  .print-source {
+    display: none;
+  }
+
+  .preview-pages {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    max-width: 100%;
+    overflow-x: auto;
+    padding: 8px 0 24px;
+  }
+
+  .preview-sheet {
+    position: relative;
+    box-sizing: border-box;
+    flex: 0 0 auto;
+    width: 794px;
+    min-height: 1123px;
+    padding: 56px 56px 145px;
+    border: 1px solid #d5d9df;
+    background: #fff;
+    box-shadow: 0 8px 28px rgb(22 34 51 / 14%);
+    color: #202630;
+  }
+
+  .preview-document-body {
+    padding-top: 12px;
+  }
+
+  .preview-page-footer {
+    position: absolute;
+    right: 56px;
+    bottom: 56px;
+    left: 56px;
+  }
+
   .print-canvas {
     max-width: 850px;
     margin: 20px auto;
@@ -614,6 +1074,53 @@ function printDocument() {
     min-height: 900px;
     margin: 12px auto;
     padding: 20px 14px;
+  }
+
+  .preview-pages {
+    align-items: flex-start;
+  }
+
+  .preview-sheet .form-header {
+    grid-template-columns: 102px minmax(0, 1fr);
+  }
+
+  .preview-sheet .form-seal {
+    padding: 8px;
+  }
+
+  .preview-sheet .form-seal img {
+    width: 76px;
+    height: 76px;
+  }
+
+  .preview-sheet .institution-heading h1 {
+    font-size: 17px;
+  }
+
+  .preview-sheet .institution-heading p,
+  .preview-sheet .metadata-row {
+    font-size: 11px;
+  }
+
+  .preview-sheet .metadata-row {
+    grid-template-columns: 1.15fr 1.65fr 0.9fr;
+  }
+
+  .preview-sheet .metadata-row > div {
+    padding: 5px 7px;
+  }
+
+  .preview-sheet .metadata-primary .form-name {
+    font-size: 12px;
+  }
+
+  .preview-sheet .metadata-secondary > div {
+    flex-wrap: nowrap;
+  }
+
+  .preview-sheet .approval-cell h2 {
+    padding: 5px 6px;
+    font-size: 10px;
   }
 
   .form-header {
@@ -666,16 +1173,47 @@ function printDocument() {
 }
 
 @media print {
+  .preview-pages {
+    display: block !important;
+    max-width: none !important;
+    overflow: visible !important;
+    padding: 0 !important;
+  }
+
+  .preview-sheet {
+    width: 180mm !important;
+    height: 267mm !important;
+    min-height: 267mm !important;
+    margin: 0 !important;
+    padding: 0 0 25mm !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .preview-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .preview-page-footer {
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 25mm;
+  }
+
+  .print-source {
+    display: none !important;
+  }
+
   :global(body *) {
     visibility: hidden !important;
   }
 
   :global(body *:has(.print-page)) {
     display: contents !important;
-  }
-
-  :global(body *:has(.print-page) > :not(.print-page):not(:has(.print-page))) {
-    display: none !important;
   }
 
   .print-page,
@@ -702,6 +1240,8 @@ function printDocument() {
   :global(.q-layout),
   :global(.q-page-container),
   :global(.q-page),
+  .preview-pages,
+  .preview-pages *,
   .print-canvas,
   .print-canvas * {
     -webkit-print-color-adjust: exact !important;
@@ -731,6 +1271,10 @@ function printDocument() {
     border: 0 !important;
     background: transparent !important;
     box-shadow: none !important;
+  }
+
+  .print-canvas.print-source {
+    display: none !important;
   }
 
   .print-document {
