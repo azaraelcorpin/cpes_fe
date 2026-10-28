@@ -1083,15 +1083,32 @@ async function printDocument() {
 }
 
 .form-footer {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
+  box-sizing: border-box;
   border: 1px solid #222;
   color: #111;
   font-family: Arial, sans-serif;
 }
 
-.approval-cell + .approval-cell {
-  border-left: 1px solid #222;
+.form-footer::before,
+.form-footer::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #222;
+  content: '';
+  pointer-events: none;
+}
+
+.form-footer::before {
+  left: 33.3333%;
+}
+
+.form-footer::after {
+  left: 66.6667%;
 }
 
 .approval-cell h2 {
@@ -1173,9 +1190,9 @@ async function printDocument() {
   .preview-page-footer {
     position: absolute;
     right: 15mm;
-    bottom: 15mm;
+    bottom: 5mm;
     left: 15mm;
-    height: 25mm;
+    height: 20mm;
     box-sizing: border-box;
   }
 
