@@ -198,15 +198,24 @@
         <footer class="form-footer preview-page-footer" aria-label="Document approvals">
           <section class="approval-cell">
             <h2>Prepared by</h2>
-            <div class="signature-space"></div>
+            <div class="signature-space">
+              <strong>MICHAEL B. CANAWAY, PhD</strong>
+              <span>Process Owner</span>
+            </div>
           </section>
           <section class="approval-cell">
             <h2>Reviewed by</h2>
-            <div class="signature-space"></div>
+            <div class="signature-space">
+              <strong>PROF. MONSOUR A. PELMIN, PhD</strong>
+              <span>QuAMSO Director</span>
+            </div>
           </section>
           <section class="approval-cell">
-            <h2>Approved by / Recommended by</h2>
-            <div class="signature-space"></div>
+            <h2>Approved by</h2>
+            <div class="signature-space">
+              <strong>ATTY. SHIDIK T. ABANTAS, MDM, LLM</strong>
+              <span>University Chancellor</span>
+            </div>
           </section>
         </footer>
       </article>
@@ -392,15 +401,24 @@
       <footer class="form-footer absolute-page-footer" aria-label="Document approvals">
         <section class="approval-cell">
           <h2>Prepared by</h2>
-          <div class="signature-space"></div>
+          <div class="signature-space">
+            <strong>MICHAEL B. CANAWAY, PhD</strong>
+            <span>Process Owner</span>
+          </div>
         </section>
         <section class="approval-cell">
           <h2>Reviewed by</h2>
-          <div class="signature-space"></div>
+          <div class="signature-space">
+            <strong>PROF. MONSOUR A. PELMIN, PhD</strong>
+            <span>QuAMSO Director</span>
+          </div>
         </section>
         <section class="approval-cell">
-          <h2>Approved by / Recommended by</h2>
-          <div class="signature-space"></div>
+          <h2>Approved by</h2>
+          <div class="signature-space">
+            <strong>ATTY. SHIDIK T. ABANTAS, MDM, LLM</strong>
+            <span>University Chancellor</span>
+          </div>
         </section>
       </footer>
     </main>
@@ -1088,7 +1106,31 @@ async function printDocument() {
 }
 
 .signature-space {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  align-items: center;
   min-height: 56px;
+  text-align: center;
+  font-size: 8px;
+  line-height: 1.15;
+}
+
+.signature-space strong {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
+  border-bottom: 1px solid #222;
+  font-size: 9px;
+}
+
+.signature-space span {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 4px;
 }
 
 @media screen {
