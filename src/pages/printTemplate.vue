@@ -13,8 +13,13 @@
           icon="print"
           label="Print document"
           unelevated
+          :loading="isPreparingPrint"
+          :disable="isPreparingPrint"
           @click="printDocument"
         />
+      </div>
+      <div v-if="printError" class="text-negative q-mt-sm" role="alert">
+        {{ printError }}
       </div>
     </section>
 
@@ -22,6 +27,7 @@
       <article
         v-for="page in previewPages"
         :key="page.number"
+        ref="previewSheetElements"
         class="preview-sheet"
         :aria-label="`Document page ${page.number} of ${previewPages.length}`"
       >
@@ -204,6 +210,16 @@
           </section>
         </footer>
       </article>
+    </main>
+
+    <main v-if="printImageSources.length" class="print-image-pages" aria-hidden="true">
+      <img
+        v-for="(source, index) in printImageSources"
+        :key="index"
+        class="print-page-image"
+        :src="source"
+        alt=""
+      />
     </main>
 
     <main class="print-canvas print-source" aria-label="Subjective course evaluation form">
@@ -392,7 +408,8 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref } from 'vue'
+import html2canvas from 'html2canvas'
 
 const props = defineProps({
   evaluation: {
@@ -415,6 +432,16 @@ const props = defineProps({
     type: Array,
     default: () => []
   }
+})
+
+const previewSheetElements = ref([])
+const printImageSources = ref([])
+const isPreparingPrint = ref(false)
+const printError = ref('')
+let printImageObjectUrls = []
+
+onBeforeUnmount(() => {
+  printImageObjectUrls.forEach(url => URL.revokeObjectURL(url))
 })
 
 const latestActionReportSignatories = computed(() => {
@@ -464,7 +491,7 @@ const latestActionReportSignatories = computed(() => {
 
 const previewPages = computed(() => {
   const pageCapacity = 740
-  const signatoriesHeight = 100
+  const signatoriesHeight = 180
   const pages = []
   let page = createPage(true)
   page.usedHeight = estimateIntroHeight()
@@ -531,6 +558,10 @@ const previewPages = computed(() => {
     })
   } else {
     page.showActionReportEmpty = true
+  }
+
+  if (page.actionRows.length && page.usedHeight + signatoriesHeight > pageCapacity) {
+    startPage()
   }
 
   page.showSignatories = true
@@ -644,8 +675,65 @@ function romanNumeral(value) {
   return numerals[value - 1] || String(value)
 }
 
-function printDocument() {
-  window.print()
+async function printDocument() {
+  if (isPreparingPrint.value) return
+
+  isPreparingPrint.value = true
+  printError.value = ''
+  const generatedObjectUrls = []
+
+  try {
+    await nextTick()
+    await document.fonts.ready
+
+    const sheets = previewSheetElements.value.filter(Boolean)
+    if (sheets.length !== previewPages.value.length) {
+      throw new Error('The preview pages are not ready to print. Please try again.')
+    }
+
+    const imageSources = []
+    for (const sheet of sheets) {
+      const images = Array.from(sheet.querySelectorAll('img'))
+      await Promise.all(images.map(image => image.decode()))
+
+      const canvas = await html2canvas(sheet, {
+        backgroundColor: '#ffffff',
+        scale: 3,
+        useCORS: true,
+        logging: false
+      })
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(result => {
+          if (result) resolve(result)
+          else reject(new Error('Could not create a printable image for a preview page.'))
+        }, 'image/png')
+      })
+      canvas.width = 0
+      canvas.height = 0
+      const objectUrl = URL.createObjectURL(blob)
+      generatedObjectUrls.push(objectUrl)
+      imageSources.push(objectUrl)
+    }
+
+    printImageObjectUrls.forEach(URL.revokeObjectURL)
+    printImageObjectUrls = generatedObjectUrls
+    printImageSources.value = imageSources
+    await nextTick()
+    await Promise.all(
+      Array.from(document.querySelectorAll('.print-page-image')).map(image => image.decode())
+    )
+    window.print()
+  } catch (error) {
+    generatedObjectUrls.forEach(url => URL.revokeObjectURL(url))
+    printImageObjectUrls.forEach(URL.revokeObjectURL)
+    printImageObjectUrls = []
+    printImageSources.value = []
+    printError.value = error instanceof Error
+      ? `Unable to prepare the print preview: ${error.message}`
+      : 'Unable to prepare the print preview.'
+  } finally {
+    isPreparingPrint.value = false
+  }
 }
 </script>
 
@@ -1008,6 +1096,10 @@ function printDocument() {
     display: none;
   }
 
+  .print-image-pages {
+    display: none;
+  }
+
   .preview-pages {
     display: flex;
     flex-direction: column;
@@ -1022,10 +1114,11 @@ function printDocument() {
     position: relative;
     box-sizing: border-box;
     flex: 0 0 auto;
-    width: 794px;
-    min-height: 1123px;
-    padding: 56px 56px 145px;
-    border: 1px solid #d5d9df;
+    width: 210mm;
+    height: 297mm;
+    padding: 15mm 15mm 38mm;
+    border: 0;
+    outline: 1px solid #d5d9df;
     background: #fff;
     box-shadow: 0 8px 28px rgb(22 34 51 / 14%);
     color: #202630;
@@ -1037,9 +1130,11 @@ function printDocument() {
 
   .preview-page-footer {
     position: absolute;
-    right: 56px;
-    bottom: 56px;
-    left: 56px;
+    right: 15mm;
+    bottom: 15mm;
+    left: 15mm;
+    height: 25mm;
+    box-sizing: border-box;
   }
 
   .print-canvas {
@@ -1169,60 +1264,48 @@ function printDocument() {
 
 @page {
   size: A4 portrait;
-  margin: 15mm 15mm 15mm;
+  margin: 0;
 }
 
 @media print {
-  .preview-pages {
-    display: block !important;
-    max-width: none !important;
-    overflow: visible !important;
-    padding: 0 !important;
-  }
-
-  .preview-sheet {
-    width: 180mm !important;
-    height: 267mm !important;
-    min-height: 267mm !important;
-    margin: 0 !important;
-    padding: 0 0 25mm !important;
-    border: 0 !important;
-    box-shadow: none !important;
-    break-after: page;
-    page-break-after: always;
-  }
-
-  .preview-sheet:last-child {
-    break-after: auto;
-    page-break-after: auto;
-  }
-
-  .preview-page-footer {
-    right: 0 !important;
-    bottom: 0 !important;
-    left: 0 !important;
-    height: 25mm;
-  }
-
+  .preview-pages,
   .print-source {
     display: none !important;
   }
 
-  :global(body *) {
-    visibility: hidden !important;
+  .print-image-pages {
+    display: block !important;
+    width: 210mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .print-page-image {
+    display: block !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-page-image:last-child {
+    break-after: auto;
+    page-break-after: auto;
   }
 
   :global(body *:has(.print-page)) {
     display: contents !important;
   }
 
-  .print-page,
-  .print-page * {
-    visibility: visible !important;
+  :global(body *:not(:has(.print-page)):not(.print-page):not(.print-page *)) {
+    display: none !important;
   }
 
   :global(html),
   :global(body),
+  :global(#q-app),
   :global(.q-layout),
   :global(.q-page-container),
   :global(.q-page) {
@@ -1261,93 +1344,10 @@ function printDocument() {
     width: 100% !important;
   }
 
-  .print-canvas {
-    display: block !important;
-    width: 100% !important;
-    max-width: none !important;
-    min-height: 0 !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-  }
-
-  .print-canvas.print-source {
-    display: none !important;
-  }
-
-  .print-document {
-    display: table !important;
-    width: 100% !important;
-    border-collapse: collapse !important;
-  }
-
-  .print-document > thead {
-    display: table-header-group !important;
-  }
-
-  .print-document > tbody {
-    display: table-row-group !important;
-  }
-
-  .print-document > tfoot {
-    display: table-footer-group !important;
-  }
-
-  .print-document > thead > tr {
-    page-break-inside: avoid;
-    break-inside: avoid;
-  }
-
-  .print-document > tbody > tr {
-    page-break-inside: auto;
-    break-inside: auto;
-  }
-
-  .print-document > thead > tr > td,
-  .print-document > tfoot > tr > td {
-    padding: 0 !important;
-  }
-
-  .print-document > tbody > tr > td {
-    padding: 12px 0 0 !important;
-    vertical-align: top !important;
-  }
-
-  .absolute-page-footer {
-    position: fixed !important;
-    bottom: 0mm;
-    left: 0 !important;
-    width: 100% !important;
-    background: white !important;
-    height: 25mm;
-    box-sizing: border-box;
-    break-inside: avoid;
-    page-break-inside: avoid;
-  }
-
-  .footer-print-spacer {
-    height: 25mm;
-    display: block !important;
-  }
-
-  .document-body {
-    padding: 0 0 10px;
-  }
-
-  .summary-table {
-    break-inside: auto;
-    page-break-inside: auto;
-  }
-
-  .summary-table thead {
-    display: table-header-group;
-  }
-
-  .summary-table tr {
-    break-inside: avoid;
-    page-break-inside: avoid;
+  .print-image-pages,
+  .print-image-pages * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 </style>
