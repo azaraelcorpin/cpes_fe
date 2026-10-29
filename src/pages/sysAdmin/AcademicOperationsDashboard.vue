@@ -14,6 +14,9 @@
     </header>
 
     <div class="dashboard-grid">
+      <section class="dashboard-grid__interpretation">
+        <EvaluationInterpretationBreakdown />
+      </section>
       <section class="dashboard-grid__intervention">
         <ActiveInterventionRate />
       </section>
@@ -25,9 +28,6 @@
       </section>
       <section class="dashboard-grid__deficits">
         <IndicatorDeficitBreakdown />
-      </section>
-      <section class="dashboard-grid__interpretation">
-        <EvaluationInterpretationBreakdown />
       </section>
     </div>
   </q-page>
