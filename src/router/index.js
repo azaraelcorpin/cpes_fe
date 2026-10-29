@@ -45,6 +45,8 @@ function checkRoles(to, from, next) {
           let prevRouteRole = userRoles?(requiredRolesFrom??[]).some(role => userRoles.includes(role)):null;
           if(prevRouteRole)
             next(from);
+          else if(to.name === 'dashboard')
+            next({name:'signIn'})
           else
             next({name:'dashboard'})
         }) ;      

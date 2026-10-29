@@ -16,10 +16,10 @@ const routes = [
   {
     path: '/dashboard',
     name:'dashboard',
-    component: () => import('pages/sysAdmin/SysAdmin.vue'),
+    component: () => import('pages/sysAdmin/AcademicOperationsDashboard.vue'),
     meta:{
       title:'Dashboard',
-      roles:[]
+      roles:['CHAIRPERSON', 'DEAN', 'admin', 'CCSID', 'VCAA']
     },
     icon:'dashboard',
     visible:true,
@@ -111,7 +111,7 @@ const routes = [
     component: () => import('pages/student/StudentEnrolledCourses.vue'),
     meta:{
       title:'Enrolled Courses',
-      roles:[]
+      roles:['student']
     },
     icon:'school',
     visible:true,
@@ -193,7 +193,7 @@ const routes = [
     roles:[]
   },
   icon:'print',
-  visible:true,
+  visible:false,
 },
 
   // Always leave this as last one,

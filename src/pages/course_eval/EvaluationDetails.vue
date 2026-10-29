@@ -842,8 +842,8 @@ export default {
     },
 
     allActionMembersAgreed () {
-      return this.actionMembers.length > 0 && this.actionMembers.every(member =>
-        this.normalizedMemberStatus(member.status) === 'AGREED'
+      return (this.actionMembers.length == 0) || (this.actionMembers.length > 0 && this.actionMembers.every(member =>
+        this.normalizedMemberStatus(member.status) === 'AGREED')
       );
     },
 

@@ -1,0 +1,7 @@
+[
+  { "dept_code": "ABM", "agreed_count": 15, "pending_count": 3 },
+  { "dept_code": "BSIT", "agreed_count": 22, "pending_count": 1 },
+  { "dept_code": "BSCE", "agreed_count": 8, "pending_count": 12 },
+  { "dept_code": "BSED", "agreed_count": 30, "pending_count": 0 },
+  { "dept_code": "BSN", "agreed_count": 5, "pending_count": 25 }
+]

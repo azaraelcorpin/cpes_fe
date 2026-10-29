@@ -1,11 +1,44 @@
 <template>
-  <q-page padding class="student-page">
+  <div padding class="student-page">
     <q-card flat bordered class="page-header-card shadow-1">
       <q-card-section class="row items-center justify-between q-col-gutter-md">
         <div class="col-12 col-md-8">
           <div class="text-overline text-primary text-weight-bold header-kicker">Student profile</div>
           <div class="row items-center q-col-gutter-md no-wrap">
-            <div class="avatar-badge">{{ initials }}</div>
+            <q-btn
+              round
+              unelevated
+              class="avatar-badge"
+              padding="none"
+              aria-label="User account"
+            >
+             <q-avatar size="62px">
+                <img v-if="student.picture" :src="student.picture" alt="" />
+                <q-icon v-else name="person" />
+              </q-avatar>
+              <q-menu>
+                <div class="column items-center no-wrap q-pa-md">
+                  <q-avatar size="72px">
+                    <img v-if="student.picture" :src="student.picture" alt="" />
+                    <q-icon v-else name="person" />
+                  </q-avatar>
+                  <div class="text-subtitle1 q-mt-md q-mb-xs">
+                    {{ studentDisplayName || 'Un Identified' }}
+                  </div>
+                  <div>{{ student.email || 'Email unavailable' }}</div>
+                  <div>{{ student.role || 'Student' }}</div>
+                  <q-btn
+                    color="black"
+                    label="Logout"
+                    push
+                    size="sm"
+                    class="q-mt-md"
+                    v-close-popup
+                    @click="signOut"
+                  />
+                </div>
+              </q-menu>
+            </q-btn>
             <div>
               <div class="text-h5 text-weight-bold text-grey-9">{{ studentDisplayName }}</div>
               <div class="text-body2 text-grey-7">Student ID: {{ studentIdentifier }} &nbsp;•&nbsp; {{ studentProgram }}</div>
@@ -183,7 +216,7 @@
           </div>
       </q-card-section>
     </q-card>
-  </q-page>
+  </div>
 </template>
 
 <script>
@@ -363,6 +396,12 @@ export default {
         message: `${actionText.charAt(0).toUpperCase() + actionText.slice(1)} for ${course.subjectCode}`,
         position: 'top-right'
       })
+    },
+
+    signOut () {
+      this.cookies.remove('_UID_')
+      localStorage.clear()
+      this.$router.push({ name: 'signIn' })
     }
   }
 }
@@ -370,6 +409,15 @@ export default {
 
 <style scoped>
 .student-page {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  box-sizing: border-box;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  padding: 16px;
   background: #f5f5f4;
 }
 
@@ -385,8 +433,11 @@ export default {
 }
 
 .avatar-badge {
+  box-sizing: border-box;
+  flex: 0 0 62px;
   width: 62px;
   height: 62px;
+  min-width: 62px;
   border-radius: 50%;
   background: linear-gradient(135deg, #650b0e, #9a2d2f);
   color: #fff;
@@ -396,6 +447,18 @@ export default {
   font-weight: 700;
   font-size: 1.15rem;
   box-shadow: 0 8px 20px rgba(101, 11, 14, 0.18);
+}
+
+.avatar-badge :deep(.q-btn__content) {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-badge :deep(.q-avatar) {
+  flex: 0 0 100%;
 }
 
 .summary-grid {

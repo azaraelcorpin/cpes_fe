@@ -190,6 +190,7 @@
               <span v-if="signatory.entry" class="action-report-signatory-meta">
                 <span>{{ signatory.entry.email }}</span>
                 <span>{{ formatSignatoryTimestamp(signatory.entry.acted_at) }}</span>
+                <span>({{ signatory.entry.role }})</span>
               </span>
             </div>
           </section>
@@ -836,16 +837,16 @@ async function printDocument() {
   text-align: center;
 }
 
-.institution-heading::after {
+/* .institution-heading::after {
   position: absolute;
   left: 3%;
   right: 6%;
   bottom: -1px;
   height: 6px;
   background: #f2c51d;
-  clip-path: polygon(0 35%, 78% 35%, 87% 0, 100% 0, 96% 75%, 78% 100%, 0 65%);
+  clip-path: polygon(0 60%, 78% 60%, 100% 0, 100% 0, 96% 75%, 78% 100%, 0 65%);
   content: '';
-}
+} */
 
 .institution-heading h1 {
   margin: 0;

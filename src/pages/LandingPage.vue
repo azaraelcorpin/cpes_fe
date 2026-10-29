@@ -219,9 +219,20 @@ export default{
                       if(sid.college_code)
                         localStorage.setItem("college_code",JSON.stringify(sid.college_code))
 
-                  }
-                      router.push({ path: 'dashboard'})
+                  
+                  if(sid.role === 'student'){
+                      router.push({ name: 'studentEnrolledCourses'})
                       loading.value=false;
+                    }
+                  else if(sid.role === 'faculty'){
+                      router.push({ name: 'manageCourseEvaluations'})
+                      loading.value=false;
+                    }
+                    else{
+                      router.push({ name: 'dashboard'})
+                      loading.value=false;
+                    }
+                  }
                       // window.location.reload();
                 } catch (error) {
                   console.log('reso',error)

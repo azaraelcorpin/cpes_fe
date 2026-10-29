@@ -1,0 +1,27 @@
+[
+  {
+    "indicator_name": "Student Support & Facilities",
+    "deficit_count": 85,
+    "cumulative_percentage": 44.5
+  },
+  {
+    "indicator_name": "Teacher Quality",
+    "deficit_count": 55,
+    "cumulative_percentage": 73.3
+  },
+  {
+    "indicator_name": "Learning and Teaching",
+    "deficit_count": 32,
+    "cumulative_percentage": 90.1
+  },
+  {
+    "indicator_name": "Course Quality",
+    "deficit_count": 12,
+    "cumulative_percentage": 96.3
+  },
+  {
+    "indicator_name": "Student Assessment",
+    "deficit_count": 7,
+    "cumulative_percentage": 100.0
+  }
+]

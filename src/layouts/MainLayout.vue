@@ -84,7 +84,7 @@
     >
      <q-scroll-area class="fit" :horizontal-thumb-style="{ opacity: 0 }">
       <q-list padding>
-          <q-item v-ripple to="/">
+          <q-item v-ripple >
             <q-avatar square>
               <img src="~assets/MSU_Gensan_logo.png">
             </q-avatar>

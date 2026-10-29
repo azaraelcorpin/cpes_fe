@@ -1,0 +1,8 @@
+[
+  { "status": "DRAFT", "count": 45 },
+  { "status": "SUBMITTED", "count": 28 },
+  { "status": "REVIEWED", "count": 14 },
+  { "status": "ENDORSED", "count": 32 },
+  { "status": "CHECKED", "count": 8 },
+  { "status": "APPROVED", "count": 5 }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "college_code": "CBAA",
+    "responses": 450,
+    "expected_enrollment": 500,
+    "percentage": 90.0
+  },
+  {
+    "college_code": "CNSM",
+    "responses": 520,
+    "expected_enrollment": 680,
+    "percentage": 76.47
+  },
+  {
+    "college_code": "COA",
+    "responses": 180,
+    "expected_enrollment": 300,
+    "percentage": 60.0
+  },
+  {
+    "college_code": "CED",
+    "responses": 120,
+    "expected_enrollment": 400,
+    "percentage": 30.0
+  },
+  {
+    "college_code": "COE",
+    "responses": 45,
+    "expected_enrollment": 200,
+    "percentage": 22.5
+  }
+]
