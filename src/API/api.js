@@ -865,6 +865,29 @@ export default {
       }
     },
 
+    //setCommentAsFeatured
+    async setCommentAsFeatured(commentId, isFeatured){
+      var path = '/api/course-evaluation/responses/setCommentAsFeatured'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        comment_id: commentId,
+        is_featured: isFeatured,
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('setCommentAsFeatured Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
     //getSignificantlyLowestItemsByEvaluationId
     async getSignificantlyLowestItemsByEvaluationId(evaluationId){
       var path = '/api/course-evaluation/responses/getSignificantlyLowestItemsByEvaluationId'

@@ -297,9 +297,30 @@
                       </div>
                       <div class="comments-panel">
                         <div class="text-caption text-weight-bold text-grey-7 q-mb-xs">Respondent comments</div>
-                        <div v-if="commentsForIndicator(indicator).length" class="comments-list">
-                          <div v-for="(comment, commentIndex) in commentsForIndicator(indicator)" :key="`${indicator._id}-comment-${commentIndex}`" class="comment-entry text-body2 text-grey-8">
-                            {{ comment }}
+                        <div v-if="respondentCommentsForIndicator(indicator).length" class="comments-list">
+                          <div
+                            v-for="comment in respondentCommentsForIndicator(indicator)"
+                            :key="comment.stateKey"
+                            class="comment-entry text-body2 text-grey-8"
+                          >
+                            <q-btn
+                              v-if="comment.id"
+                              flat
+                              round
+                              dense
+                              size="sm"
+                              :icon="comment.isFeatured ? 'star' : 'star_border'"
+                              :color="comment.isFeatured ? 'amber-8' : 'grey-6'"
+                              :loading="featuredCommentUpdates[comment.stateKey]"
+                              :disable="featuredCommentUpdates[comment.stateKey]"
+                              :aria-label="comment.isFeatured ? 'Remove featured status' : 'Feature comment'"
+                              @click="toggleCommentFeatured(comment)"
+                            >
+                              <q-tooltip>
+                                {{ comment.isFeatured ? 'Remove featured status' : 'Mark as featured' }}
+                              </q-tooltip>
+                            </q-btn>
+                            <span>{{ comment.text }}</span>
                           </div>
                         </div>
                         <div v-else class="text-caption text-grey-6">No comments recorded for this indicator.</div>
@@ -738,6 +759,7 @@ export default {
       actionReportSocket: null,
       actionReportSocketHandlers: null,
       signoffSaving: false,
+      featuredCommentUpdates: {},
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
       memberForm: {
         email: '',
@@ -937,7 +959,9 @@ export default {
           items: this.lowestRatedItemsFor(indicator)
             .map(item => item.name || item.item_name)
             .filter(Boolean),
-          comments: this.commentsForIndicator(indicator),
+          comments: this.respondentCommentsForIndicator(indicator)
+            .filter(comment => comment.isFeatured)
+            .map(comment => comment.text),
           action: report?.action || ''
         };
       });
@@ -1530,8 +1554,8 @@ export default {
       }
     },
 
-    async getCommentsByEvaluationId () {
-      if (!this.evaluationIsClosed) return;
+    async getCommentsByEvaluationId (notifyOnError = true) {
+      if (!this.evaluationIsClosed) return false;
 
       try {
         const response = await api.getCommentsByEvaluationId(this.evaluation._id);
@@ -1539,16 +1563,24 @@ export default {
           throw new Error(response?.error?.response?.data?.message || 'Unable to load evaluation comments.');
         }
         const comments = Array.isArray(response.data) ? response.data : [];
-        for(const indicator of this.evaluation.indicators) {
-          const matchingComment = comments.find(comment => String(comment.indicator_id) === String(indicator.indicator_id));
-          indicator.comments = matchingComment?.comments ?? matchingComment?.comment ?? matchingComment?.text ?? null;
+        for (const indicator of this.evaluation.indicators || []) {
+          const indicatorId = indicator.indicator_id || indicator._id || indicator.id;
+          const matchingGroup = comments.find(comment =>
+            String(comment.indicator_id || comment.indicatorId) === String(indicatorId)
+          );
+          indicator.comments = matchingGroup
+            ? (Array.isArray(matchingGroup.comments) ? matchingGroup.comments : [])
+            : [];
         }
+        return true;
       } catch (error) {
-        this.$q.notify({
-          type: 'negative',
-          message: error.message || 'Failed to load evaluation comments.'
-        });
-        
+        if (notifyOnError) {
+          this.$q.notify({
+            type: 'negative',
+            message: error.message || 'Failed to load evaluation comments.'
+          });
+        }
+        return false;
       }
     },
 
@@ -1912,18 +1944,78 @@ export default {
     },
 
     commentsForIndicator (indicator) {
+      return this.respondentCommentsForIndicator(indicator)
+        .map(comment => comment.text)
+        .filter(Boolean);
+    },
+
+    respondentCommentsForIndicator (indicator) {
       const source = indicator?.comments ?? indicator?.comment ?? [];
       const comments = Array.isArray(source) ? source : [source];
+      const indicatorId = indicator?.indicator_id || indicator?._id || indicator?.id || 'indicator';
 
       return comments
-        .map(comment => {
-          if (comment && typeof comment === 'object') {
-            return comment.comments ?? comment.comment ?? comment.text ?? '';
-          }
-          return comment;
+        .map((comment, index) => {
+          const entry = comment && typeof comment === 'object' ? comment : { comment };
+          const id = entry.comment_id || entry._id || entry.id || entry.response_id || null;
+          return {
+            id,
+            indicatorId: String(indicatorId),
+            stateKey: `${indicatorId}:${id || 'comment'}:${index}`,
+            text: String(entry.comment ?? entry.comments ?? entry.text ?? '').trim(),
+            isFeatured: entry.is_featured === true || String(entry.is_featured).toLowerCase() === 'true'
+          };
         })
-        .map(comment => String(comment || '').trim())
-        .filter(Boolean);
+        .filter(comment => comment.text);
+    },
+
+    async toggleCommentFeatured (comment) {
+      if (!comment.id || this.featuredCommentUpdates[comment.stateKey]) return;
+
+      this.featuredCommentUpdates[comment.stateKey] = true;
+      try {
+        const response = await api.setCommentAsFeatured(comment.id, !comment.isFeatured);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Unable to update featured comment status.');
+        }
+
+        const updatedComment = response.data;
+        const updatedCommentId = updatedComment?.comment_id ?? updatedComment?._id ?? updatedComment?.id;
+        if (
+          !updatedComment ||
+          typeof updatedComment !== 'object' ||
+          String(updatedCommentId) !== String(comment.id) ||
+          typeof updatedComment.is_featured !== 'boolean'
+        ) {
+          throw new Error('The API did not return the updated comment details.');
+        }
+
+        const indicator = (this.evaluation.indicators || []).find(item =>
+          String(item.indicator_id || item._id || item.id) === comment.indicatorId
+        );
+        const comments = indicator?.comments;
+        const commentIndex = Array.isArray(comments)
+          ? comments.findIndex(item =>
+            String(item.comment_id || item._id || item.id || item.response_id) === String(comment.id)
+          )
+          : -1;
+        if (commentIndex === -1) {
+          throw new Error('Unable to find the updated comment in the evaluation.');
+        }
+
+        comments.splice(commentIndex, 1, {
+          ...comments[commentIndex],
+          ...updatedComment
+        });
+      } catch (error) {
+        console.error('Failed to update featured comment status', error);
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to update featured comment status.'
+        });
+      } finally {
+        delete this.featuredCommentUpdates[comment.stateKey];
+      }
     },
 
     getStatusColor (status) {
