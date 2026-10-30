@@ -138,14 +138,14 @@ export default {
       default: null
     },
     evaluation: {
-      type: Array,
+      type: Object,
       default: null
     }
   },
 
   computed: {
     loading () {
-      return !this.acadTerm || !Array.isArray(this.evaluation)
+      return !this.acadTerm || !Array.isArray(this.evaluation?.data)
     },
 
     activeTermLabel () {
@@ -161,7 +161,7 @@ export default {
     },
 
     classifiedEvaluations () {
-      return (this.evaluation || [])
+      return (this.evaluation?.data || [])
         .filter(evaluation => String(evaluation.status || 'DRAFT').toUpperCase() !== 'DRAFT')
         .map(evaluation => ({
           evaluation,

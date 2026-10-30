@@ -1,22 +1,28 @@
 <template>
   <q-card flat bordered class="dashboard-card">
     <q-card-section>
-      <div class="text-subtitle1 text-weight-bold">Urgent Workflow Jam Tracker</div>
+      <div class="text-subtitle1 text-weight-bold">{{ title }}</div>
       <div class="text-caption text-grey-7">Action-report approvals by workflow status</div>
     </q-card-section>
 
     <q-card-section class="chart-container">
-      <q-banner v-if="error" dense rounded class="bg-red-1 text-negative">{{ error }}</q-banner>
-      <div v-else-if="loading" class="loading-state">
+      <div v-if="loading" class="loading-state">
         <q-spinner color="primary" size="32px" />
       </div>
       <template v-else>
         <div class="approval-track" aria-label="Action report approval status counts">
-          <div
+          <button
+            type="button"
             v-for="(step, index) in approvalSteps"
             :key="step.status"
             class="approval-step"
-            :class="{ 'approval-step--last': index === approvalSteps.length - 1 }"
+            :class="{
+              'approval-step--last': index === approvalSteps.length - 1,
+              'approval-step--selected': selectedStatus === step.status
+            }"
+            :aria-pressed="selectedStatus === step.status"
+            :aria-label="`${step.label}: ${step.count} evaluations. Show breakdown by college`"
+            @click="toggleStatus(step.status)"
           >
             <div class="approval-step__node-wrap">
               <div class="approval-step__node" :class="`approval-step__node--${step.tone}`">
@@ -30,21 +36,40 @@
               ></div>
             </div>
             <div class="approval-step__label">{{ step.label }}</div>
-          </div>
+          </button>
         </div>
 
-        <div class="declined-summary">
-          <q-icon name="reply" color="negative" size="18px" />
-          <span class="text-weight-medium">Declined / returned</span>
-          <q-badge color="negative" rounded>{{ declinedCount }}</q-badge>
-          <span class="text-caption text-grey-7">sent back for revision</span>
-        </div>
+        <section v-if="selectedStatus" class="college-breakdown" aria-live="polite">
+          <div class="college-breakdown__header">
+            <div class="text-subtitle2 text-weight-bold">{{ selectedStatusLabel }} by college</div>
+            <q-btn
+              flat
+              round
+              dense
+              icon="close"
+              aria-label="Close college breakdown"
+              @click="selectedStatus = null"
+            />
+          </div>
+          <div v-if="!selectedEvaluations.length" class="text-caption text-grey-7 q-pa-md">
+            No evaluations have this workflow status.
+          </div>
+          <apexchart
+            v-else
+            type="pie"
+            height="260"
+            :options="collegeChartOptions"
+            :series="collegeCounts.map(item => item.count)"
+          />
+        </section>
       </template>
     </q-card-section>
   </q-card>
 </template>
 
 <script>
+import VueApexCharts from 'vue3-apexcharts'
+
 const APPROVAL_STEPS = [
   { status: 'DRAFT', label: 'DRAFT', tone: 'muted' },
   { status: 'SUBMITTED', label: 'SUBMITTED', tone: 'primary' },
@@ -57,56 +82,115 @@ const APPROVAL_STEPS = [
 export default {
   name: 'WorkflowJamTracker',
 
-  data () {
-    return {
-      loading: true,
-      error: '',
-      statusCounts: {}
+  components: {
+    apexchart: VueApexCharts
+  },
+
+  props: {
+    evaluation: {
+      type: Object,
+      default: null
+    },
+    title: {
+      type: String,
+      default: 'Workflow Jam Tracker'
     }
   },
 
   computed: {
+    loading () {
+      return !Array.isArray(this.evaluation?.data)
+    },
+
+    statusCounts () {
+      return (this.evaluation?.data || []).reduce((counts, evaluation) => {
+        const status = String(
+          evaluation.action_report_status ||
+          evaluation.actionReportStatus ||
+          evaluation.action_report?.status ||
+          'DRAFT'
+        ).trim().toUpperCase()
+        counts[status] = (counts[status] || 0) + 1
+        return counts
+      }, {})
+    },
+
+    selectedStatusLabel () {
+      return APPROVAL_STEPS.find(step => step.status === this.selectedStatus)?.label || ''
+    },
+
+    selectedEvaluations () {
+      if (!this.selectedStatus) return []
+
+      return (this.evaluation?.data || []).filter((evaluation) => {
+        const status = String(
+          evaluation.action_report_status ||
+          evaluation.actionReportStatus ||
+          evaluation.action_report?.status ||
+          'DRAFT'
+        ).trim().toUpperCase()
+        return status === this.selectedStatus
+      })
+    },
+
+    collegeCounts () {
+      const counts = this.selectedEvaluations.reduce((result, evaluation) => {
+        const college = String(evaluation.college_code || '').trim() || 'Unassigned'
+        result[college] = (result[college] || 0) + 1
+        return result
+      }, {})
+
+      return Object.entries(counts)
+        .sort(([first], [second]) => first.localeCompare(second))
+        .map(([college, count]) => ({ college, count }))
+    },
+
+    collegeChartOptions () {
+      return {
+        chart: {
+          type: 'donut',
+          toolbar: { show: false }
+        },
+        labels: this.collegeCounts.map(item => `${item.college} (${item.count})`),
+        colors: ['#1976d2', '#18864b', '#e6a23c', '#7553a6', '#168aad', '#c83e4d', '#667085', '#9ac8ab', '#eaf2ff', '#f0f5ff', '#f5f7fa', '#d9dee7', '#e4e7ec', '#f0f1f5', '#f9fafb'],
+        legend: {
+          position: 'right'
+        },
+        dataLabels: {
+          enabled: true
+        },
+        tooltip: {
+          y: {
+            formatter: value => `${value} evaluation${value === 1 ? '' : 's'}`
+          }
+        },
+        responsive: [{
+          breakpoint: 600,
+          options: {
+            chart: { height: 300 },
+            legend: { position: 'bottom' }
+          }
+        }]
+      }
+    },
+
     approvalSteps () {
       return APPROVAL_STEPS.map(step => ({
         ...step,
         count: this.statusCounts[step.status] || 0
       }))
-    },
-
-    declinedCount () {
-      return this.statusCounts.DECLINED || 0
     }
   },
 
-  mounted () {
-    this.loadDashboardData()
+  data () {
+    return {
+      selectedStatus: null
+    }
   },
 
   methods: {
-    async loadDashboardData () {
-      this.loading = true
-      this.error = ''
-
-      try {
-        // Replace this local JSON import with counts grouped by course_eval.action_report status.
-        const response = await import('../data/dashboard/workflow-jam-tracker.json')
-        const payload = response.default
-
-        if (!Array.isArray(payload)) {
-          throw new Error('Workflow payload must be an array.')
-        }
-
-        this.statusCounts = payload.reduce((counts, report) => {
-          const status = String(report.status || '').trim().toUpperCase()
-          if (status) counts[status] = Number(report.count) || 0
-          return counts
-        }, {})
-      } catch (error) {
-        console.error('Failed to load workflow data', error)
-        this.error = 'Unable to load workflow status data.'
-      } finally {
-        this.loading = false
-      }
+    toggleStatus (status) {
+      this.selectedStatus = this.selectedStatus === status ? null : status
     }
   }
 }
@@ -135,7 +219,23 @@ export default {
 .approval-step {
   flex: 1 0 96px;
   min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
   text-align: center;
+  cursor: pointer;
+  font: inherit;
+}
+
+.approval-step:focus-visible {
+  outline: 2px solid #1976d2;
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+.approval-step--selected .approval-step__node {
+  background: #eaf2ff;
+  box-shadow: 0 0 0 4px rgb(25 118 210 / 16%);
 }
 
 .approval-step__node-wrap {
@@ -205,18 +305,18 @@ export default {
   white-space: nowrap;
 }
 
-.declined-summary {
+.college-breakdown {
+  margin: 18px 4px 0;
+  padding: 12px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.college-breakdown__header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 8px auto 0;
-  padding: 9px 14px;
-  width: fit-content;
-  max-width: 100%;
-  border: 1px solid #f2c8cc;
-  border-radius: 8px;
-  background: #fff7f7;
+  justify-content: space-between;
 }
 
 .loading-state {
@@ -240,10 +340,6 @@ export default {
     top: 25px;
     left: calc(50% + 26px);
     width: calc(100% - 52px);
-  }
-
-  .declined-summary {
-    flex-wrap: wrap;
   }
 }
 </style>

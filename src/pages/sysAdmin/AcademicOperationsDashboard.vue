@@ -1,15 +1,18 @@
 <template>
   <q-page padding class="operations-dashboard">
     <header class="dashboard-header">
-      <div>
+      <!-- <div>
         <div class="text-overline text-primary text-weight-bold">Academic Operations</div>
         <h1 class="text-h4 text-weight-bold q-my-xs">Control Room</h1>
         <p class="text-body2 text-grey-7 q-mb-none">
           Monitor evaluation participation, workflow health, and academic quality indicators.
         </p>
-      </div>
-      <q-badge color="positive" rounded class="q-px-sm q-py-xs">
+      </div> -->
+      <!-- <q-badge color="positive" rounded class="q-px-sm q-py-xs">
         Current term
+      </q-badge> -->
+      <q-badge color="primary" rounded class="q-px-sm q-py-xs">
+        {{ activeTerm ? `${activeTerm.acad_year} - ${activeTerm.sem}` : 'No active term' }}
       </q-badge>
     </header>
 
@@ -21,21 +24,33 @@
       <section class="dashboard-grid__interpretation">
         <EvaluationInterpretationBreakdown
           v-if="!evaluationLoadError"
-          title="Course Evaluation Rating Interpretation"
+          title="Subjective Course Evaluation Rating Interpretation"
+          :acad-term="activeTerm"
+          :evaluation="evaluations"
+        />
+      </section>
+      
+      <section class="dashboard-grid__interpretation dashboard-grid__interpretation--separated">
+        <EvaluationInterpretationBreakdown
+          v-if="!evaluationLoadError"
+          title="Subjective Program Evaluation Rating Interpretation"
           :acad-term="activeTerm"
           :evaluation="evaluations"
         />
       </section>
       <section class="dashboard-grid__workflow">
-        <WorkflowJamTracker />
+        <WorkflowJamTracker :evaluation="evaluations" title="Subjective Course Evaluation" />
       </section>
-      <section class="dashboard-grid__intervention">
+      <section class="dashboard-grid__workflow dashboard-grid__interpretation--separated">
+        <WorkflowJamTracker :evaluation="evaluations" title="Subjective Program Evaluation" />
+      </section>
+      <section v-if="false" class="dashboard-grid__intervention">
         <ActiveInterventionRate />
       </section>
-      <section class="dashboard-grid__participation">
+      <section v-if="false" class="dashboard-grid__participation">
         <ParticipationHeatmap />
       </section>
-      <section class="dashboard-grid__deficits">
+      <section v-if="false" class="dashboard-grid__deficits">
         <IndicatorDeficitBreakdown />
       </section>
     </div>
@@ -101,16 +116,22 @@ export default {
           throw new Error('Unable to load evaluations for the active term.')
         }
 
-        const evaluations = (Array.isArray(evaluationsResponse.data) ? evaluationsResponse.data : [])
-          .filter(evaluation => String(evaluation.status || 'DRAFT').toUpperCase() !== 'DRAFT')
-        this.evaluations = await this.mapWithConcurrency(
+        const evaluations = Array.isArray(evaluationsResponse.data) ? evaluationsResponse.data : []
+        const enrichedEvaluations = await this.mapWithConcurrency(
           evaluations,
           4,
-          evaluation => this.getEvaluationData(evaluation)
+          evaluation => String(evaluation.status || 'DRAFT').toUpperCase() === 'DRAFT'
+            ? evaluation
+            : this.getEvaluationData(evaluation)
         )
+        this.evaluations = {
+          ...evaluationsResponse,
+          data: enrichedEvaluations
+        }
       } catch (error) {
         console.error('Failed to load evaluation interpretation data', error)
         this.evaluationLoadError = error.message || 'Unable to load evaluation interpretation data.'
+        this.evaluations = { success: false, data: [] }
       }
     },
 
@@ -204,7 +225,20 @@ export default {
 }
 
 .dashboard-grid__interpretation {
-  grid-column: span 12;
+  grid-column: span 6;
+}
+
+.dashboard-grid__interpretation--separated {
+  position: relative;
+}
+
+.dashboard-grid__interpretation--separated::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -8px;
+  border-left: 1px solid #d5d9de;
+  content: '';
 }
 
 @media (max-width: 1023px) {
@@ -217,6 +251,10 @@ export default {
 }
 
 @media (max-width: 599px) {
+  .dashboard-grid__interpretation--separated::before {
+    display: none;
+  }
+
   .dashboard-header {
     align-items: flex-start;
   }
