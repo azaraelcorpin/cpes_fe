@@ -4,10 +4,10 @@ const routes = [
   {
     path: '/',
     name:'home',
-    component: () => import('pages/IndexPage.vue'),
+    component: () => import('pages/sysAdmin/AcademicOperationsDashboard.vue'),
     meta:{
-      title:'Home',
-      roles:[]
+      title:'Dashboard',
+      roles:['CHAIRPERSON', 'DEAN', 'admin', 'CCSID', 'VCAA']
     },
     icon:'home',
     visible:false,

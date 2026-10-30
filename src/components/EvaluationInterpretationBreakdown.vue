@@ -3,57 +3,107 @@
     <q-card-section>
       <div class="row items-start justify-between no-wrap q-col-gutter-md">
         <div>
-          <div class="text-subtitle1 text-weight-bold">Evaluation Rating Interpretation</div>
+          <div class="text-subtitle1 text-weight-bold">{{ title }}</div>
           <div class="text-caption text-grey-7">
-            Evaluations grouped by their Total Average · {{ activeTermLabel || 'Active course-evaluation term' }}
+            Evaluations grouped by their Total Average · {{ activeTermLabel }}
           </div>
         </div>
-        <q-badge v-if="!loading && !error" color="primary" rounded>
+        <q-badge v-if="!loading" color="primary" rounded>
           {{ evaluatedCount }} evaluations
         </q-badge>
       </div>
     </q-card-section>
 
-    <q-card-section class="chart-container">
-      <q-banner v-if="error" dense rounded class="bg-red-1 text-negative">
-        {{ error }}
-      </q-banner>
-      <div v-else-if="loading" class="loading-state">
+    <q-card-section class="chart-container" :class="{ 'chart-container--drawer-open': selectedInterpretation }">
+      <div v-if="loading" class="loading-state">
         <q-spinner color="primary" size="32px" />
       </div>
       <div v-else-if="!evaluatedCount" class="empty-state text-grey-7">
-        No non-draft evaluations with response data were found for this term.
+        No non-draft evaluations with response data were found for this evaluation term.
       </div>
-      <div v-else class="distribution-layout">
-        <div class="distribution-chart">
-          <apexchart
-            type="donut"
-            height="280"
-            :options="chartOptions"
-            :series="chartSeries[0].data"
-          />
-        </div>
-        <div class="distribution-legend">
-          <div
-            v-for="item in interpretationSummary"
-            :key="item.label"
-            class="interpretation-row"
-          >
-            <div class="interpretation-row__heading">
-              <span class="interpretation-label">
-                <span class="interpretation-dot" :style="{ backgroundColor: item.color }"></span>
-                {{ item.label }}
-              </span>
-              <span class="text-weight-bold">{{ item.count }}</span>
+      <div v-else class="interpretation-content">
+        <aside class="evaluation-drawer" :class="{ 'evaluation-drawer--open': selectedInterpretation }">
+          <div v-if="selectedInterpretation" class="evaluation-drawer__content">
+            <div class="row items-center justify-between q-mb-sm no-wrap">
+              <div class="col">
+                <div class="text-subtitle2 text-weight-bold">{{ selectedInterpretation?.label }} evaluations</div>
+                <div class="text-caption text-grey-7">
+                  {{ selectedEvaluations.length }} evaluation{{ selectedEvaluations.length === 1 ? '' : 's' }}
+                </div>
+              </div>
+              <q-btn
+                flat
+                round
+                dense
+                icon="close"
+                aria-label="Close evaluation list"
+                @click="selectedInterpretationIndex = null"
+              />
             </div>
-            <q-linear-progress
-              rounded
-              size="7px"
-              :value="item.percentage / 100"
-              :color="item.quasarColor"
-              track-color="grey-3"
+            <q-table
+              flat
+              bordered
+              :rows="selectedEvaluations"
+              :columns="evaluationColumns"
+              :row-key="evaluationRowKey"
+              :pagination="{ rowsPerPage: 5 }"
+              no-data-label="No evaluations match this interpretation."
+            >
+              <template v-slot:body-cell-course_code="props">
+                <q-td :props="props">
+                  <q-btn
+                    flat
+                    dense
+                    no-caps
+                    color="primary"
+                    class="text-weight-bold text-underline"
+                    :to="{ name: 'evaluationDetails', params: { id: props.row._id }, query: { tab: 'summary' } }"
+                  >
+                    {{ props.row.course_code }}
+                  </q-btn>
+                </q-td>
+              </template>
+            </q-table>
+          </div>
+        </aside>
+        <div class="distribution-layout" :class="{ 'distribution-layout--drawer-open': selectedInterpretation }">
+          <div class="distribution-chart">
+            <apexchart
+              type="donut"
+              height="280"
+              :options="chartOptions"
+              :series="chartSeries[0].data"
             />
-            <div class="text-caption text-grey-7 q-mt-xs">{{ item.percentage }}% of evaluations</div>
+          </div>
+          <div class="distribution-legend">
+            <div
+              v-for="(item, index) in interpretationSummary"
+              :key="item.label"
+              class="interpretation-row"
+            >
+              <div class="interpretation-row__heading">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  class="interpretation-label"
+                  :aria-pressed="selectedInterpretationIndex === index"
+                  @click="toggleInterpretation(index)"
+                >
+                  <span class="interpretation-dot" :style="{ backgroundColor: item.color }"></span>
+                  {{ item.label }}
+                </q-btn>
+                <span class="text-weight-bold">{{ item.count }}</span>
+              </div>
+              <q-linear-progress
+                rounded
+                size="7px"
+                :value="item.percentage / 100"
+                :color="item.quasarColor"
+                track-color="grey-3"
+              />
+              <div class="text-caption text-grey-7 q-mt-xs">{{ item.percentage }}% of evaluations</div>
+            </div>
           </div>
         </div>
       </div>
@@ -63,7 +113,6 @@
 
 <script>
 import VueApexCharts from 'vue3-apexcharts'
-import api from 'src/API/api.js'
 
 const INTERPRETATIONS = [
   { label: 'Very Satisfied', color: '#18864b', quasarColor: 'positive' },
@@ -79,18 +128,102 @@ export default {
     apexchart: VueApexCharts
   },
 
+  props: {
+    title: {
+      type: String,
+      default: 'Evaluation Rating Interpretation'
+    },
+    acadTerm: {
+      type: Object,
+      default: null
+    },
+    evaluation: {
+      type: Array,
+      default: null
+    }
+  },
+
+  computed: {
+    loading () {
+      return !this.acadTerm || !Array.isArray(this.evaluation)
+    },
+
+    activeTermLabel () {
+      if (!this.acadTerm) return 'Current evaluation term'
+
+      const semesterLabels = { 21: '1st Semester', 22: '2nd Semester', 23: 'Summer' }
+      const semester = semesterLabels[Number(this.acadTerm.sem)] || `Semester ${this.acadTerm.sem}`
+      return `${this.acadTerm.acad_year} ${semester}`
+    },
+
+    evaluatedCount () {
+      return this.classifiedEvaluations.length
+    },
+
+    classifiedEvaluations () {
+      return (this.evaluation || [])
+        .filter(evaluation => String(evaluation.status || 'DRAFT').toUpperCase() !== 'DRAFT')
+        .map(evaluation => ({
+          evaluation,
+          interpretationIndex: this.getEvaluationInterpretation(evaluation)
+        }))
+        .filter(result => result.interpretationIndex !== null)
+    },
+
+    chartSeries () {
+      const counts = INTERPRETATIONS.map((item, index) =>
+        this.classifiedEvaluations.filter(result => result.interpretationIndex === index).length
+      )
+      return [{ name: 'Evaluations', data: counts }]
+    },
+
+    selectedInterpretation () {
+      return Number.isInteger(this.selectedInterpretationIndex)
+        ? INTERPRETATIONS[this.selectedInterpretationIndex]
+        : null
+    },
+
+    selectedEvaluations () {
+      if (!this.selectedInterpretation) return []
+
+      return this.classifiedEvaluations
+        .filter(result => result.interpretationIndex === this.selectedInterpretationIndex)
+        .map(result => result.evaluation)
+    },
+
+    interpretationSummary () {
+      const counts = this.chartSeries[0].data
+      return INTERPRETATIONS.map((item, index) => {
+        const count = counts[index]
+        return {
+          ...item,
+          count,
+          percentage: this.evaluatedCount
+            ? Number((count / this.evaluatedCount * 100).toFixed(1))
+            : 0
+        }
+      })
+    }
+  },
+
   data () {
     return {
-      loading: true,
-      error: '',
-      activeTermLabel: '',
-      evaluatedCount: 0,
-      chartSeries: [{ name: 'Evaluations', data: [] }],
+      selectedInterpretationIndex: null,
+      evaluationColumns: [
+        { name: 'course_code', label: 'Course Code', field: 'course_code', align: 'left', sortable: true },
+        { name: 'dept_code', label: 'Department', field: 'dept_code', align: 'left', sortable: true },
+        { name: 'college_code', label: 'College', field: 'college_code', align: 'left', sortable: true }
+      ],
       chartOptions: {
         chart: {
           type: 'donut',
           toolbar: { show: false },
-          animations: { enabled: true }
+          animations: { enabled: true },
+          events: {
+            dataPointSelection: (event, chartContext, config) => {
+              this.toggleInterpretation(config.dataPointIndex)
+            }
+          }
         },
         colors: INTERPRETATIONS.map(item => item.color),
         labels: INTERPRETATIONS.map(item => item.label),
@@ -128,7 +261,7 @@ export default {
                   formatter: () => String(this.evaluatedCount)
                 }
               }
-            }
+            },
           }
         },
         dataLabels: {
@@ -155,97 +288,21 @@ export default {
     }
   },
 
-  computed: {
-    interpretationSummary () {
-      const counts = this.chartSeries[0]?.data || []
-      return INTERPRETATIONS.map((item, index) => {
-        const count = counts[index] || 0
-        return {
-          ...item,
-          count,
-          percentage: this.evaluatedCount
-            ? Number((count / this.evaluatedCount * 100).toFixed(1))
-            : 0
-        }
-      })
-    }
-  },
-
-  mounted () {
-    this.loadDashboardData()
-  },
-
   methods: {
-    async loadDashboardData () {
-      this.loading = true
-      this.error = ''
-
-      try {
-        const termsResponse = await api.getAllAcademicTerms()
-        if (!termsResponse || termsResponse.error || !termsResponse.success) {
-          throw new Error('Unable to load academic terms.')
-        }
-
-        const activeTerm = (Array.isArray(termsResponse.data) ? termsResponse.data : []).find((term) => {
-          const isActive = term.is_active === true || String(term.is_active).toLowerCase() === 'true'
-          return isActive && String(term.type || '').toUpperCase() === 'COURSE_EVAL'
-        })
-
-        if (!activeTerm) {
-          throw new Error('No active course-evaluation term is configured.')
-        }
-
-        this.activeTermLabel = `${activeTerm.acad_year} ${this.formatSemester(activeTerm.sem)}`
-
-        const evaluationsResponse = await api.getEvaluations({
-          acad_year: activeTerm.acad_year,
-          sem: Number(activeTerm.sem)
-        })
-        if (!evaluationsResponse || evaluationsResponse.error || !evaluationsResponse.success) {
-          throw new Error('Unable to load evaluations for the active term.')
-        }
-
-        const evaluations = (Array.isArray(evaluationsResponse.data) ? evaluationsResponse.data : [])
-          .filter(evaluation => String(evaluation.status || 'DRAFT').toUpperCase() !== 'DRAFT')
-
-        const results = await this.mapWithConcurrency(evaluations, 4, evaluation => this.getEvaluationInterpretation(evaluation))
-        const counts = INTERPRETATIONS.map(() => 0)
-
-        results.forEach((interpretationIndex) => {
-          if (interpretationIndex !== null) counts[interpretationIndex] += 1
-        })
-
-        this.evaluatedCount = results.filter(result => result !== null).length
-        this.chartSeries = [{ name: 'Evaluations', data: counts }]
-      } catch (error) {
-        console.error('Failed to load evaluation interpretation data', error)
-        this.error = error.message || 'Unable to load evaluation interpretation data.'
-      } finally {
-        this.loading = false
-      }
+    toggleInterpretation (index) {
+      this.selectedInterpretationIndex = this.selectedInterpretationIndex === index
+        ? null
+        : index
     },
 
-    async getEvaluationInterpretation (evaluation) {
-      const evaluationId = evaluation._id || evaluation.id || evaluation.evaluation_id
-      if (!evaluationId) {
-        throw new Error('An evaluation record is missing its ID.')
-      }
+    evaluationRowKey (evaluation) {
+      return evaluation._id || evaluation.id || evaluation.evaluation_id || evaluation.course_code
+    },
 
-      const [detailsResponse, statsResponse] = await Promise.all([
-        api.getByEvaluation_Id(evaluationId),
-        api.getResponseStatistics(evaluationId)
-      ])
-
-      if (!detailsResponse || detailsResponse.error || !detailsResponse.success) {
-        throw new Error(`Unable to load evaluation details for ${evaluationId}.`)
-      }
-      if (!statsResponse || statsResponse.error || !statsResponse.success) {
-        throw new Error(`Unable to load response statistics for ${evaluationId}.`)
-      }
-
-      const details = Array.isArray(detailsResponse.data) ? detailsResponse.data[0] : detailsResponse.data
+    getEvaluationInterpretation (evaluation) {
+      const details = evaluation.interpretationDetails
+      const statistics = evaluation.responseStatistics || []
       const indicators = this.normalizeIndicators(details)
-      const statistics = Array.isArray(statsResponse.data) ? statsResponse.data : []
 
       if (!indicators.length || !statistics.some(stat => Number(stat.total_responses) > 0)) {
         return null
@@ -310,27 +367,6 @@ export default {
           }))
         }
       })
-    },
-
-    async mapWithConcurrency (items, limit, callback) {
-      const results = new Array(items.length)
-      let nextIndex = 0
-
-      const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-        while (nextIndex < items.length) {
-          const index = nextIndex
-          nextIndex += 1
-          results[index] = await callback(items[index])
-        }
-      })
-
-      await Promise.all(workers)
-      return results
-    },
-
-    formatSemester (semester) {
-      const labels = { 21: '1st Semester', 22: '2nd Semester', 23: 'Summer' }
-      return labels[Number(semester)] || `Semester ${semester}`
     }
   }
 }
@@ -345,13 +381,46 @@ export default {
 
 .chart-container {
   min-width: 0;
+  overflow: hidden;
+}
+
+.interpretation-content {
+  display: flex;
+  min-width: 0;
+}
+
+.evaluation-drawer {
+  flex: 0 0 0;
+  min-width: 0;
+  overflow: hidden;
+  transition: flex-basis 280ms ease, margin-right 280ms ease;
+}
+
+.evaluation-drawer--open {
+  flex-basis: 48%;
+  margin-right: 20px;
+}
+
+.evaluation-drawer__content {
+  width: 100%;
+  min-width: 0;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.evaluation-drawer--open .evaluation-drawer__content {
+  opacity: 1;
+  transition-delay: 100ms;
 }
 
 .distribution-layout {
+  flex: 1 1 auto;
+  min-width: 0;
   display: grid;
   grid-template-columns: minmax(240px, 1fr) minmax(220px, 1fr);
   align-items: center;
   gap: 20px;
+  transition: flex-basis 280ms ease;
 }
 
 .distribution-chart {
@@ -376,6 +445,8 @@ export default {
   align-items: center;
   gap: 9px;
   font-weight: 500;
+  padding: 0;
+  min-height: 28px;
 }
 
 .interpretation-dot {
@@ -394,6 +465,20 @@ export default {
 }
 
 @media (max-width: 700px) {
+  .chart-container--drawer-open .interpretation-content {
+    flex-direction: column-reverse;
+  }
+
+  .evaluation-drawer--open {
+    flex-basis: 300px;
+    margin: 16px 0 0;
+    overflow: visible;
+  }
+
+  .evaluation-drawer__content {
+    min-width: 0;
+  }
+
   .distribution-layout {
     grid-template-columns: minmax(0, 1fr);
     gap: 0;

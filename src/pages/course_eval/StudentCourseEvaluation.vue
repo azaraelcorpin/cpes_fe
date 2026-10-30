@@ -1,6 +1,16 @@
 <template>
 	<q-page class="student-evaluation-page q-pa-md q-pa-lg-xl">
 		<div class="evaluation-container">
+			<div class="row justify-end q-mb-sm">
+				<q-btn
+					flat
+					no-caps
+					color="grey-8"
+					icon="close"
+					label="Close"
+					@click="$router.back()"
+				/>
+			</div>
 			<q-card flat bordered class="evaluation-header">
 				<q-card-section class="q-pb-sm">
 					<div class="row items-start q-col-gutter-md">

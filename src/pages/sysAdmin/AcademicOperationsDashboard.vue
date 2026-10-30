@@ -13,18 +13,27 @@
       </q-badge>
     </header>
 
+    <q-banner v-if="evaluationLoadError" dense rounded class="bg-red-1 text-negative q-mb-md">
+      {{ evaluationLoadError }}
+    </q-banner>
+
     <div class="dashboard-grid">
       <section class="dashboard-grid__interpretation">
-        <EvaluationInterpretationBreakdown />
+        <EvaluationInterpretationBreakdown
+          v-if="!evaluationLoadError"
+          title="Course Evaluation Rating Interpretation"
+          :acad-term="activeTerm"
+          :evaluation="evaluations"
+        />
+      </section>
+      <section class="dashboard-grid__workflow">
+        <WorkflowJamTracker />
       </section>
       <section class="dashboard-grid__intervention">
         <ActiveInterventionRate />
       </section>
       <section class="dashboard-grid__participation">
         <ParticipationHeatmap />
-      </section>
-      <section class="dashboard-grid__workflow">
-        <WorkflowJamTracker />
       </section>
       <section class="dashboard-grid__deficits">
         <IndicatorDeficitBreakdown />
@@ -34,6 +43,7 @@
 </template>
 
 <script>
+import api from 'src/API/api.js'
 import ActiveInterventionRate from 'src/components/ActiveInterventionRate.vue'
 import EvaluationInterpretationBreakdown from 'src/components/EvaluationInterpretationBreakdown.vue'
 import IndicatorDeficitBreakdown from 'src/components/IndicatorDeficitBreakdown.vue'
@@ -43,12 +53,110 @@ import WorkflowJamTracker from 'src/components/WorkflowJamTracker.vue'
 export default {
   name: 'AcademicOperationsDashboard',
 
+  data () {
+    return {
+      activeTerm: null,
+      evaluations: null,
+      evaluationLoadError: ''
+    }
+  },
+
   components: {
     ActiveInterventionRate,
     EvaluationInterpretationBreakdown,
     IndicatorDeficitBreakdown,
     ParticipationHeatmap,
     WorkflowJamTracker
+  },
+
+  mounted () {
+    this.loadEvaluationInterpretationData()
+  },
+
+  methods: {
+    async loadEvaluationInterpretationData () {
+      this.evaluationLoadError = ''
+
+      try {
+        const termsResponse = await api.getAllAcademicTerms()
+        if (!termsResponse || termsResponse.error || !termsResponse.success) {
+          throw new Error('Unable to load academic terms.')
+        }
+
+        const activeTerm = (Array.isArray(termsResponse.data) ? termsResponse.data : []).find((term) => {
+          const isActive = term.is_active === true || String(term.is_active).toLowerCase() === 'true'
+          return isActive && String(term.type || '').toUpperCase() === 'COURSE_EVAL'
+        })
+
+        if (!activeTerm) {
+          throw new Error('No active course-evaluation term is configured.')
+        }
+        this.activeTerm = activeTerm
+
+        const evaluationsResponse = await api.getEvaluations({
+          acad_year: activeTerm.acad_year,
+          sem: Number(activeTerm.sem)
+        })
+        if (!evaluationsResponse || evaluationsResponse.error || !evaluationsResponse.success) {
+          throw new Error('Unable to load evaluations for the active term.')
+        }
+
+        const evaluations = (Array.isArray(evaluationsResponse.data) ? evaluationsResponse.data : [])
+          .filter(evaluation => String(evaluation.status || 'DRAFT').toUpperCase() !== 'DRAFT')
+        this.evaluations = await this.mapWithConcurrency(
+          evaluations,
+          4,
+          evaluation => this.getEvaluationData(evaluation)
+        )
+      } catch (error) {
+        console.error('Failed to load evaluation interpretation data', error)
+        this.evaluationLoadError = error.message || 'Unable to load evaluation interpretation data.'
+      }
+    },
+
+    async getEvaluationData (evaluation) {
+      const evaluationId = evaluation._id || evaluation.id || evaluation.evaluation_id
+      if (!evaluationId) {
+        throw new Error('An evaluation record is missing its ID.')
+      }
+
+      const [detailsResponse, statsResponse] = await Promise.all([
+        api.getByEvaluation_Id(evaluationId),
+        api.getResponseStatistics(evaluationId)
+      ])
+
+      if (!detailsResponse || detailsResponse.error || !detailsResponse.success) {
+        throw new Error(`Unable to load evaluation details for ${evaluationId}.`)
+      }
+      if (!statsResponse || statsResponse.error || !statsResponse.success) {
+        throw new Error(`Unable to load response statistics for ${evaluationId}.`)
+      }
+
+      const details = Array.isArray(detailsResponse.data) ? detailsResponse.data[0] : detailsResponse.data
+      const statistics = Array.isArray(statsResponse.data) ? statsResponse.data : []
+
+      return {
+        ...evaluation,
+        interpretationDetails: details,
+        responseStatistics: statistics
+      }
+    },
+
+    async mapWithConcurrency (items, limit, callback) {
+      const results = new Array(items.length)
+      let nextIndex = 0
+
+      const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+        while (nextIndex < items.length) {
+          const index = nextIndex
+          nextIndex += 1
+          results[index] = await callback(items[index])
+        }
+      })
+
+      await Promise.all(workers)
+      return results
+    }
   }
 }
 </script>
@@ -83,7 +191,7 @@ export default {
 }
 
 .dashboard-grid__intervention {
-  grid-column: span 4;
+  grid-column: span 6;
 }
 
 .dashboard-grid__participation {

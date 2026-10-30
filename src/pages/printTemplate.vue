@@ -111,7 +111,9 @@
                     'summary-total-average-row': row.label === 'Total Average'
                   }"
                 >
-                  <th scope="row">{{ row.label }}</th>
+                  <th scope="row">
+                    <template v-if="row.sort_order != null">{{ row.sort_order }}. </template>{{ row.label }}
+                  </th>
                   <td>{{ formatMean(row.mean) }}</td>
                   <td>{{ row.description || '' }}</td>
                   <td>{{ row.interpretation || '' }}</td>
@@ -324,7 +326,9 @@
                           'summary-total-average-row': row.label === 'Total Average'
                         }"
                       >
-                        <th scope="row">{{ row.label }}</th>
+                        <th scope="row">
+                          <template v-if="row.sort_order != null">{{ row.sort_order }}. </template>{{ row.label }}
+                        </th>
                         <td>{{ formatMean(row.mean) }}</td>
                         <td>{{ row.description || '' }}</td>
                         <td>{{ row.interpretation || '' }}</td>

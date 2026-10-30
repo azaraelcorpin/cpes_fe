@@ -240,7 +240,9 @@
                         <td class="text-right summary-interpretation text-weight-bold">{{ row.interpretation }}</td>
                       </tr>
                       <tr v-else>
-                        <td class="text-left summary-item-name">{{ row.label }}</td>
+                        <td class="text-left summary-item-name">
+                          {{ row.sort_order != null ? `${row.sort_order}. ` : '' }}{{ row.label }}
+                        </td>
                         <td class="text-right summary-metric">{{ formatSummaryMean(row.mean) }}</td>
                         <td class="text-right summary-description">{{ row.description }}</td>
                         <td class="text-right summary-interpretation">{{ row.interpretation }}</td>
@@ -1046,6 +1048,7 @@ export default {
             
             rows.push({
               isHeader: false,
+              sort_order: item.sort_order ?? item.sortOrder ?? itemIndex + 1,
               label: item.name || item.item_name || item.label || `Item ${itemIndex + 1}`,
               mean: itemMean,
               description: itemMeta.description,
@@ -2529,8 +2532,21 @@ export default {
 }
 
 .summary-total-average-row {
-  border-top: 2px solid #dbe2ea;
-  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02);
+  background: #f3f4f6;
+}
+
+.summary-report-table .summary-total-average-row > td {
+  border-top: 2px solid #6b7280;
+  border-bottom: 2px solid #6b7280;
+  background: #f3f4f6;
+}
+
+.summary-report-table .summary-total-average-row > td:first-child {
+  border-left: 2px solid #6b7280;
+}
+
+.summary-report-table .summary-total-average-row > td:last-child {
+  border-right: 2px solid #6b7280;
 }
 
 .summary-overall-spacer-row td {
@@ -2619,8 +2635,12 @@ export default {
   }
 
   .summary-total-average-row {
-    border-top: 2px solid #dbe2ea;
-    box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02);
+    border: 2px solid #6b7280 !important;
+    background: #f3f4f6 !important;
+  }
+
+  .summary-report-table .summary-total-average-row > td {
+    background: #f3f4f6;
   }
 
   .details-heading {
