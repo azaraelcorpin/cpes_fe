@@ -41,7 +41,7 @@
 
         <section v-if="selectedStatus" class="college-breakdown" aria-live="polite">
           <div class="college-breakdown__header">
-            <div class="text-subtitle2 text-weight-bold">{{ selectedStatusLabel }} by college</div>
+            <div class="text-subtitle2 text-weight-bold">{{ selectedStatusLabel }} by {{ breakdownLabel }}</div>
             <q-btn
               flat
               round
@@ -59,7 +59,7 @@
             type="pie"
             height="260"
             :options="collegeChartOptions"
-            :series="collegeCounts.map(item => item.count)"
+            :series="breakdownCounts.map(item => item.count)"
           />
         </section>
       </template>
@@ -69,6 +69,7 @@
 
 <script>
 import VueApexCharts from 'vue3-apexcharts'
+import { useCookies } from 'vue3-cookies'
 
 const APPROVAL_STEPS = [
   { status: 'DRAFT', label: 'DRAFT', tone: 'muted' },
@@ -97,6 +98,14 @@ export default {
     }
   },
 
+  data () {
+    const { cookies } = useCookies()
+    return {
+      cookies,
+      selectedStatus: null
+    }
+  },
+
   computed: {
     loading () {
       return !Array.isArray(this.evaluation?.data)
@@ -119,6 +128,49 @@ export default {
       return APPROVAL_STEPS.find(step => step.status === this.selectedStatus)?.label || ''
     },
 
+    currentUserRoles () {
+      let user = this.cookies.get('_UID_')
+      if (typeof user === 'string') {
+        try {
+          user = JSON.parse(user)
+        } catch (error) {
+          return []
+        }
+      }
+
+      const storedRoles = user?.role
+      if (!storedRoles) return []
+
+      let roles = storedRoles
+      if (typeof roles === 'string') {
+        try {
+          roles = JSON.parse(roles)
+        } catch (error) {
+          roles = roles.replace(/^\[|\]$/g, '').split(',')
+        }
+      }
+
+      if (typeof roles === 'string') {
+        try {
+          roles = JSON.parse(roles)
+        } catch (error) {
+          roles = [roles]
+        }
+      }
+
+      return (Array.isArray(roles) ? roles : [roles])
+        .filter(Boolean)
+        .map(role => String(role).trim().toUpperCase())
+    },
+
+    isDean () {
+      return this.currentUserRoles.includes('DEAN')
+    },
+
+    breakdownLabel () {
+      return this.isDean ? 'department' : 'college'
+    },
+
     selectedEvaluations () {
       if (!this.selectedStatus) return []
 
@@ -133,25 +185,26 @@ export default {
       })
     },
 
-    collegeCounts () {
+    breakdownCounts () {
       const counts = this.selectedEvaluations.reduce((result, evaluation) => {
-        const college = String(evaluation.college_code || '').trim() || 'Unassigned'
-        result[college] = (result[college] || 0) + 1
+        const code = String(evaluation[this.isDean ? 'dept_code' : 'college_code'] || '').trim() || 'Unassigned'
+        result[code] = (result[code] || 0) + 1
         return result
       }, {})
 
       return Object.entries(counts)
         .sort(([first], [second]) => first.localeCompare(second))
-        .map(([college, count]) => ({ college, count }))
+        .map(([code, count]) => ({ code, count }))
     },
 
     collegeChartOptions () {
       return {
         chart: {
-          type: 'donut',
+          // type: 'donut',
+          type: 'pie',
           toolbar: { show: false }
         },
-        labels: this.collegeCounts.map(item => `${item.college} (${item.count})`),
+        labels: this.breakdownCounts.map(item => `${item.code} (${item.count})`),
         colors: ['#1976d2', '#18864b', '#e6a23c', '#7553a6', '#168aad', '#c83e4d', '#667085', '#9ac8ab', '#eaf2ff', '#f0f5ff', '#f5f7fa', '#d9dee7', '#e4e7ec', '#f0f1f5', '#f9fafb'],
         legend: {
           position: 'right'
@@ -179,12 +232,6 @@ export default {
         ...step,
         count: this.statusCounts[step.status] || 0
       }))
-    }
-  },
-
-  data () {
-    return {
-      selectedStatus: null
     }
   },
 

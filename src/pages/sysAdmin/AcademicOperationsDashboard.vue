@@ -21,6 +21,7 @@
     </q-banner>
 
     <div class="dashboard-grid">
+      <div class="dashboard-grid__interpretation" >
       <section class="dashboard-grid__interpretation">
         <EvaluationInterpretationBreakdown
           v-if="!evaluationLoadError"
@@ -29,8 +30,12 @@
           :evaluation="evaluations"
         />
       </section>
-      
-      <section class="dashboard-grid__interpretation dashboard-grid__interpretation--separated">
+      <section class="dashboard-grid__workflow">
+        <WorkflowJamTracker :evaluation="evaluations" />
+      </section>
+      </div>
+      <div class="dashboard-grid__interpretation dashboard-grid__interpretation--separated">
+      <section class="dashboard-grid__interpretation">
         <EvaluationInterpretationBreakdown
           v-if="!evaluationLoadError"
           title="Subjective Program Evaluation Rating Interpretation"
@@ -39,11 +44,9 @@
         />
       </section>
       <section class="dashboard-grid__workflow">
-        <WorkflowJamTracker :evaluation="evaluations" title="Subjective Course Evaluation" />
+        <WorkflowJamTracker :evaluation="evaluations"  />
       </section>
-      <section class="dashboard-grid__workflow dashboard-grid__interpretation--separated">
-        <WorkflowJamTracker :evaluation="evaluations" title="Subjective Program Evaluation" />
-      </section>
+      </div>
       <section v-if="false" class="dashboard-grid__intervention">
         <ActiveInterventionRate />
       </section>
@@ -110,7 +113,8 @@ export default {
 
         const evaluationsResponse = await api.getEvaluations({
           acad_year: activeTerm.acad_year,
-          sem: Number(activeTerm.sem)
+          sem: activeTerm.sem === '1st Semester'? 21 : activeTerm.sem === '2nd Semester'? 22 : 23,
+          requestor: 'dashboard',
         })
         if (!evaluationsResponse || evaluationsResponse.error || !evaluationsResponse.success) {
           throw new Error('Unable to load evaluations for the active term.')
@@ -237,7 +241,7 @@ export default {
   top: 0;
   bottom: 0;
   left: -8px;
-  border-left: 1px solid #d5d9de;
+  border-left: 4px solid #d5d9de;
   content: '';
 }
 
