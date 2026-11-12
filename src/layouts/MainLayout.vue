@@ -115,7 +115,7 @@
                     expand-icon-class="text-white"
                     >
                       <div  v-for="child in item.children" :key="child.path" link>
-                        <q-item v-if="child.visible" clickable v-ripple :to="child.path">
+                        <q-item v-if="child.visible && checkRoles(child.meta.roles)" clickable v-ripple :to="child.path">
                           <q-item-section avatar>
                             <q-icon :name="child.icon" />
                           </q-item-section>

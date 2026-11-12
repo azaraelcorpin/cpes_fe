@@ -136,7 +136,7 @@ const routes = [
     name:'sysadm',
     meta:{
       title:'System Admin',
-      roles:['admin']
+      roles:['admin', 'CCSID', 'VCAA']
     },
     icon:'settings',
     visible:true,
@@ -146,7 +146,7 @@ const routes = [
         component: () => import('pages/cpes_settings/UserMgt.vue'),
         meta:{
           title:'Users',
-          roles:['admin']
+          roles:['admin', 'CCSID', 'VCAA']
         },
         icon:'manage_accounts',
         visible:true,
@@ -156,6 +156,7 @@ const routes = [
         component: () => import('pages/cpes_settings/RatingScaleSetting.vue'),
         meta:{
           title:'Rating Scales',
+          roles:['admin', 'VCAA']
         },
         icon:'star',
         visible:true,
@@ -165,6 +166,7 @@ const routes = [
         component: () => import('pages/cpes_settings/EvaluationSetting.vue'),
         meta:{
           title:'Evaluation Templates',
+          roles:['admin', 'VCAA']
         },
         icon:'settings',
         visible:true,
@@ -175,6 +177,7 @@ const routes = [
         component: () => import('pages/cpes_settings/ScheduleSetting.vue'),
         meta:{
           title:'Schedule Settings',
+          roles:['admin', 'VCAA']
         },
         icon:'calendar_today',
         visible:true,
