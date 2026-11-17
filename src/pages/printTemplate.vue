@@ -202,7 +202,7 @@
           <section class="approval-cell">
             <h2>Prepared by</h2>
             <div class="signature-space">
-              <strong>MICHAEL B. CANAWAY, PhD</strong>
+              <strong>MICHAEL B. CAHAPAY, PhD</strong>
               <span>Process Owner</span>
             </div>
           </section>
@@ -407,7 +407,7 @@
         <section class="approval-cell">
           <h2>Prepared by</h2>
           <div class="signature-space">
-            <strong>MICHAEL B. CANAWAY, PhD</strong>
+            <strong>MICHAEL B. CAHAPAY, PhD</strong>
             <span>Process Owner</span>
           </div>
         </section>
