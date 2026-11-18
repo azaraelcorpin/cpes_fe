@@ -2,42 +2,53 @@
   <q-page padding class="evaluation-page">
     <!-- Action Header Bar -->
     <div class="row items-end q-col-gutter-lg q-mb-lg page-header">
-      <div>
+      <div class="page-header-copy">
         <div class="text-overline text-primary text-weight-bold page-kicker">Academic operations</div>
         <div class="text-h5 text-weight-bold text-grey-9">Course Evaluations</div>
         <div class="text-caption text-grey-6">
           Standardizing Subject Criteria: Configuration & Quality Parameters.
         </div>
       </div>
-      <q-space />
-      <div class="view-selector q-mr-sm">
-        <div class="view-selector-label">View</div>
-        <q-btn-toggle
-          v-model="currentView"
-          class="view-switcher"
-          unelevated
-          no-caps
-          toggle-color="primary"
-          toggle-text-color="white"
-          color="white"
-          text-color="grey-7"
-          :options="visibleViewOptions"
+      <div class="page-header-actions">
+        <q-toggle
+          v-if="canDelegateEndorsement"
+          :model-value="delegationEnabled"
+          color="positive"
+          keep-color
+          label="Allow Assistant Dean to endorse"
+          class="delegation-toggle"
+          :disable="delegationLoading || delegationConfirming || delegationUpdating || !delegationStatusLoaded"
+          @update:model-value="confirmDelegationChange"
         />
-      </div>
-      <q-btn
-        v-if="canCreateEvaluation"
-        unelevated
-        color="primary"
-        no-caps
-        class="create-evaluation-btn"
-        @click="openCreateModal"
-      >
-        <!-- 💡 This custom inner template bypasses Quasar's line-height constraints -->
-        <div class="inner-btn-layout">
-          <q-icon name="add" />
-          <span>Create Evaluation</span>
+        <div class="view-selector">
+          <div class="view-selector-label">View</div>
+          <q-btn-toggle
+            v-model="currentView"
+            class="view-switcher"
+            unelevated
+            no-caps
+            toggle-color="primary"
+            toggle-text-color="white"
+            color="white"
+            text-color="grey-7"
+            :options="visibleViewOptions"
+          />
         </div>
-      </q-btn>
+        <q-btn
+          v-if="canCreateEvaluation"
+          unelevated
+          color="primary"
+          no-caps
+          class="create-evaluation-btn"
+          @click="openCreateModal"
+        >
+          <!-- 💡 This custom inner template bypasses Quasar's line-height constraints -->
+          <div class="inner-btn-layout">
+            <q-icon name="add" />
+            <span>Create Evaluation</span>
+          </div>
+        </q-btn>
+      </div>
     </div>
 
     <!-- Data Table Container Filter Controls Wrapper -->
@@ -590,6 +601,11 @@ export default {
       saving: false,
       bulkUpdating: false,
       bulkEvaluationStatus: null,
+      delegationEnabled: false,
+      delegationLoading: false,
+      delegationConfirming: false,
+      delegationUpdating: false,
+      delegationStatusLoaded: false,
       dialog: false,
       editing: false,
       draggedEvaluation: null,
@@ -665,6 +681,12 @@ export default {
         )].sort();
     },
 
+    isAsstDeanUser () {
+      const _user = this.cookies?.get?.('_UID_');
+      if (!_user) return false;
+      return (_user.designation === 'ASST-DEAN');
+    },
+
     currentUserRoles () {
       const storedRoles = this.cookies.get('_UID_')?.role;
       if (!storedRoles) return [];
@@ -701,6 +723,10 @@ export default {
 
     canCreateEvaluation () {
       return this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('admin');
+    },
+
+    canDelegateEndorsement () {
+      return this.currentUserRoles.includes('DEAN') && !this.isAsstDeanUser;
     },
 
     canManageEvaluations () {
@@ -817,6 +843,7 @@ export default {
   },
 
   async mounted () {
+    if (this.canDelegateEndorsement) this.loadDelegationStatus();
     await this.loadAcademicYears();
     await this.$nextTick();
     this.evaluationFiltersInitialized = true;
@@ -824,6 +851,80 @@ export default {
   },
 
   methods: {
+    async loadDelegationStatus () {
+      
+      if (!this.canDelegateEndorsement || this.delegationLoading || this.delegationUpdating) return;
+
+      this.delegationLoading = true;
+      try {
+        const response = await api.isAllowedAsstDeanEndorsement();
+        if (!response || response.error || !response.success) {
+          throw new Error(
+            response?.error?.response?.data?.message ||
+            response?.error?.message ||
+            'Unable to load Assistant Dean endorsement settings.'
+          );
+        }
+        const allowed = response.data.allow_asst_dean;
+
+        this.delegationEnabled = allowed;
+        this.delegationStatusLoaded = true;
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to load Assistant Dean endorsement settings.'
+        });
+      } finally {
+        this.delegationLoading = false;
+      }
+    },
+
+    async confirmDelegationChange (nextEnabled) {
+      if (
+        nextEnabled === this.delegationEnabled ||
+        !this.delegationStatusLoaded ||
+        this.delegationConfirming ||
+        this.delegationUpdating
+      ) return;
+
+      this.delegationConfirming = true;
+      try {
+        const confirmed = await myDialog.confirm(
+          this.$q,
+          `${nextEnabled ? 'Allow' : 'Remove'} Assistant Dean endorsement?`,
+          nextEnabled
+            ? 'Allow the Assistant Dean to endorse action reports on your behalf?'
+            : "Remove the Assistant Dean's ability to endorse action reports on your behalf?"
+        );
+        if (!confirmed) return;
+
+        this.delegationConfirming = false;
+        this.delegationUpdating = true;
+        const response = await api.allow_Asst_dean_endorsement(nextEnabled);
+        if (!response || response.error || !response.success) {
+          throw new Error(
+            response?.error?.response?.data?.message ||
+            response?.error?.message ||
+            'Unable to update Assistant Dean endorsement settings.'
+          );
+        }
+
+        this.delegationEnabled = nextEnabled;
+        this.$q.notify({
+          type: 'positive',
+          message: `Assistant Dean endorsement ${nextEnabled ? 'allowed' : 'removed'}.`
+        });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Failed to update Assistant Dean endorsement settings.'
+        });
+      } finally {
+        this.delegationConfirming = false;
+        this.delegationUpdating = false;
+      }
+    },
+
     isEvaluationSelected (evaluation) {
       return this.selectedEvaluations.some(item => String(item._id) === String(evaluation._id));
     },
@@ -1313,6 +1414,23 @@ export default {
 }
 .page-header {
   min-height: 88px;
+  flex-wrap: wrap;
+}
+.page-header-copy {
+  flex: 1 1 320px;
+  min-width: 260px;
+}
+.page-header-actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-left: auto;
+}
+.delegation-toggle {
+  color: #344454;
 }
 .page-kicker {
   letter-spacing: 0.12em;
@@ -1464,6 +1582,14 @@ export default {
 @media (max-width: 700px) {
   .page-header {
     align-items: stretch;
+  }
+  .page-header-copy,
+  .page-header-actions {
+    flex-basis: 100%;
+  }
+  .page-header-actions {
+    justify-content: flex-start;
+    margin-left: 0;
   }
   .view-switcher {
     width: 100%;

@@ -758,6 +758,7 @@ export default {
       },
       actionReportSocket: null,
       actionReportSocketHandlers: null,
+      enabledAsstDeanEndorsement: false,
       signoffSaving: false,
       featuredCommentUpdates: {},
       memberRoleOptions: ['COORDINATOR', 'MEMBER'],
@@ -884,7 +885,8 @@ export default {
 
       return (
         (status === 'SUBMITTED' && this.currentUserRoles.includes('CHAIRPERSON')) ||
-        (status === 'REVIEWED' && this.currentUserRoles.includes('DEAN')) ||
+        (status === 'REVIEWED' && this.currentUserRoles.includes('DEAN') && !this.isAsstDeanUser) ||
+        (status === 'REVIEWED' && this.currentUserRoles.includes('DEAN') && this.isAsstDeanUser && this.enabledAsstDeanEndorsement) ||
         (status === 'ENDORSED' && this.currentUserRoles.includes('CCSID')) ||
         (status === 'CHECKED' && this.currentUserRoles.includes('VCAA'))
       );
@@ -914,15 +916,21 @@ export default {
       );
     },
 
+    isAsstDeanUser () {
+      const _user = this.cookies?.get?.('_UID_');
+      if (!_user) return false;
+      return (_user.designation === 'ASST-DEAN');
+    },
+
     currentUserRoles () {
-      const storedRoles = localStorage.getItem('userRoles');
-      if (!storedRoles) return [];
+      const _user = this.cookies?.get?.('_UID_');
+      if (!_user) return [];
 
       let roles;
       try {
-        roles = JSON.parse(storedRoles);
+        roles = _user?.role || [];
       } catch (error) {
-        roles = storedRoles;
+        roles = _user?.role || [];
       }
 
       if (typeof roles === 'string') {
@@ -1147,6 +1155,7 @@ export default {
     await this.fetchDeepEvaluationStructure();
     this.connectActionReportSocket();
     this.fetchFacultiesWithDepartments();
+    this.getStatusAsstDeanEndorsement();
   },
 
   beforeUnmount () {
@@ -1154,6 +1163,19 @@ export default {
   },
 
   methods: {
+    async getStatusAsstDeanEndorsement() {
+      try {
+        if(this.currentUserRoles.includes('DEAN')) {
+          const response = await api.isAllowedAsstDeanEndorsement();
+          if (!response || response.error || !response.success) {
+            throw new Error(response?.error?.response?.data?.message || 'Failed to fetch assistant dean endorsement status.');
+          }
+          this.enabledAsstDeanEndorsement = Boolean(response.data?.allow_asst_dean);
+        }
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to fetch assistant dean endorsement status.' });
+      }
+    },
     async updateEvaluationStatus (status) {
       if (!this.isChairperson || this.updatingEvaluationStatus || !this.evaluation) return;
 

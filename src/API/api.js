@@ -1302,6 +1302,47 @@ export default {
     //#endregion course_eval API
 
 
+    async isAllowedAsstDeanEndorsement(){
+      var path = '/api/cpes-setting/dean-endorsement-settings/getByCollegeCode'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('getDeanEndorsementSettingsByCollegeCode Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
+    async allow_Asst_dean_endorsement(is_allowed){
+      var path = '/api/cpes-setting/dean-endorsement-settings/updateByCollegeCode'
+      var url = `${api_url}${path}`
+      const config = await this.getAuthorization(path);
+      const body = {
+        allow_asst_dean: is_allowed
+      }
+      try {
+        const response = await axios.post(url, body, config);
+        if (response && response.data && response.data.success) {
+          return response.data;
+        } else {
+          console.log('updateDeanEndorsementSettingsByCollegeCode Error');
+          return { error: response };
+        }
+      } catch (error) {
+        console.log('error', error.message);
+        return { error: error };
+      }
+    },
+
     //#region sais-ext queries
     async getDepartmentWithSubjects(acad_year,semCode){
       var path = '/api/sais-ext/getDepartmentWithSubjects'
