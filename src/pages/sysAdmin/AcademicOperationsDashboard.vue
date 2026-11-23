@@ -152,13 +152,12 @@ export default {
       ])
 
       if (!detailsResponse || detailsResponse.error || !detailsResponse.success) {
-        throw new Error(`Unable to load evaluation details for ${evaluationId}.`)
+        console.log(`%cUnable to load evaluation details for ${evaluationId}.`, 'color: red;')
+        detailsResponse.data = {}
       }
       if (!statsResponse || statsResponse.error || !statsResponse.success) {
-        console.log(`Unable to load response statistics for ${evaluationId}.`)
-        return {
-          ...evaluation
-        }
+        console.log(`%cUnable to load response statistics for ${evaluationId}.`, 'color: red;')
+        statsResponse.data = []
       }
 
       const details = Array.isArray(detailsResponse.data) ? detailsResponse.data[0] : detailsResponse.data
