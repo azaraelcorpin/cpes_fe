@@ -102,7 +102,7 @@ const routes = [
       roles: ['CHAIRPERSON', 'DEAN', 'admin', 'CCSID', 'VCAA']
     },
     icon: 'summarize',
-    visible: true,
+    visible: false,
   },
  //#endregion Action Reports Management
   {

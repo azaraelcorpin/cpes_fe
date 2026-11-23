@@ -132,6 +132,7 @@ export default {
           ...evaluationsResponse,
           data: enrichedEvaluations
         }
+        console.log('Loaded evaluation interpretation data:', this.evaluations)
       } catch (error) {
         console.error('Failed to load evaluation interpretation data', error)
         this.evaluationLoadError = error.message || 'Unable to load evaluation interpretation data.'
@@ -154,7 +155,10 @@ export default {
         throw new Error(`Unable to load evaluation details for ${evaluationId}.`)
       }
       if (!statsResponse || statsResponse.error || !statsResponse.success) {
-        throw new Error(`Unable to load response statistics for ${evaluationId}.`)
+        console.log(`Unable to load response statistics for ${evaluationId}.`)
+        return {
+          ...evaluation
+        }
       }
 
       const details = Array.isArray(detailsResponse.data) ? detailsResponse.data[0] : detailsResponse.data

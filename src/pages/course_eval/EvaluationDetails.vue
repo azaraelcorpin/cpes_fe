@@ -312,7 +312,7 @@
                               :icon="comment.isFeatured ? 'star' : 'star_border'"
                               :color="comment.isFeatured ? 'amber-8' : 'grey-6'"
                               :loading="featuredCommentUpdates[comment.stateKey]"
-                              :disable="featuredCommentUpdates[comment.stateKey]"
+                              :disable="featuredCommentUpdates[comment.stateKey] || !isAssignedCoordinator"
                               :aria-label="comment.isFeatured ? 'Remove featured status' : 'Feature comment'"
                               @click="toggleCommentFeatured(comment)"
                             >
