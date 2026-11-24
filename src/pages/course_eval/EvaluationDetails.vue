@@ -204,8 +204,36 @@
 
               <q-card flat bordered class="bg-white summary-table-card">
                 <q-card-section class="summary-table-header">
-                  <div class="text-subtitle1 text-weight-bold">Subjective Course Evaluation Summary Report</div>
-                  <div class="text-caption text-grey-6">Mean, description, and interpretation by indicator.</div>
+                  <div class="summary-table-heading">
+                    <div class="summary-table-title">
+                      <div class="text-subtitle1 text-weight-bold">Subjective Course Evaluation Summary Report</div>
+                      <div class="text-caption text-grey-6">Mean, description, and interpretation by indicator.</div>
+                    </div>
+                    <div class="participation-summary">
+                      <q-circular-progress
+                        v-if="participationRate !== null"
+                        :value="participationRate"
+                        size="52px"
+                        :thickness="0.18"
+                        color="primary"
+                        track-color="grey-3"
+                        show-value
+                        class="text-primary text-weight-bold"
+                        font-size="12px"
+                      >
+                        {{ formatSummaryPercentage(participationRate) }}
+                      </q-circular-progress>
+                      <q-avatar v-else color="blue-1" text-color="primary" icon="groups" size="42px" />
+                      <div>
+                        <div class="text-caption text-grey-7">Responses</div>
+                        <div class="text-body2 text-weight-bold text-grey-9">
+                          {{ formatSummaryCount(evaluation.total_responses) }}
+                          <span class="text-grey-6">/ {{ formatSummaryCount(evaluation.total_respondents) }}</span>
+                        </div>
+                        <div class="text-caption text-grey-6">respondents</div>
+                      </div>
+                    </div>
+                  </div>
                 </q-card-section>
 
                 <q-markup-table flat separator="cell" class="summary-report-table">
@@ -803,6 +831,27 @@ export default {
       return this.evaluation?.status === 'DRAFT';
     },
 
+    participationRate () {
+      const responsesValue = this.evaluation?.total_responses;
+      const respondentsValue = this.evaluation?.total_respondents;
+      if (
+        responsesValue === null || responsesValue === undefined || responsesValue === '' ||
+        respondentsValue === null || respondentsValue === undefined || respondentsValue === ''
+      ) return null;
+
+      const responses = Number(responsesValue);
+      const respondents = Number(respondentsValue);
+      if (
+        !Number.isFinite(responses) ||
+        !Number.isFinite(respondents) ||
+        respondents <= 0 ||
+        responses < 0 ||
+        responses > respondents
+      ) return null;
+
+      return responses / respondents * 100;
+    },
+
     evaluationIsClosed () {
       return String(this.evaluation?.status || '').trim().toUpperCase() === 'CLOSED';
     },
@@ -1156,6 +1205,7 @@ export default {
     this.connectActionReportSocket();
     this.fetchFacultiesWithDepartments();
     this.getStatusAsstDeanEndorsement();
+    this.getTotalRespondentsAndTotalResponses();
   },
 
   beforeUnmount () {
@@ -1163,6 +1213,20 @@ export default {
   },
 
   methods: {
+    async getTotalRespondentsAndTotalResponses(){
+      if (!this.evaluation || !this.evaluation._id) return;
+      try {
+        const response = await api.getTotalRespondentsAndTotalResponses(this.evaluation);
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to fetch total respondents and total responses.');
+        }
+        this.evaluation.total_respondents = response.data?.total_respondents ?? 0;
+        this.evaluation.total_responses = response.data?.total_responses ?? 0;
+      } catch (error) {
+        this.$q.notify({ type: 'negative', message: error.message || 'Failed to fetch total respondents and total responses.' });
+      }
+    },
+    
     async getStatusAsstDeanEndorsement() {
       try {
         if(this.currentUserRoles.includes('DEAN')) {
@@ -1176,6 +1240,7 @@ export default {
         this.$q.notify({ type: 'negative', message: error.message || 'Failed to fetch assistant dean endorsement status.' });
       }
     },
+
     async updateEvaluationStatus (status) {
       if (!this.isChairperson || this.updatingEvaluationStatus || !this.evaluation) return;
 
@@ -1741,6 +1806,16 @@ export default {
       const numeric = Number(value);
       if (!Number.isFinite(numeric)) return value;
       return numeric.toFixed(2);
+    },
+
+    formatSummaryCount (value) {
+      if (value === null || value === undefined || value === '') return '—';
+      const count = Number(value);
+      return Number.isFinite(count) ? new Intl.NumberFormat().format(count) : '—';
+    },
+
+    formatSummaryPercentage (value) {
+      return `${Number(value).toFixed(1)}%`;
     },
 
     normalizedMemberStatus (status) {
@@ -2601,6 +2676,36 @@ export default {
 .summary-table-header {
   background: #fff;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.summary-table-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.summary-table-title {
+  min-width: 0;
+}
+
+.participation-summary {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .summary-table-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .participation-summary {
+    margin-left: auto;
+  }
 }
 
 .summary-report-table {
