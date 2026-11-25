@@ -332,7 +332,7 @@
                             class="comment-entry text-body2 text-grey-8"
                           >
                             <q-btn
-                              v-if="comment.id"
+                              v-if="comment.id && false"
                               flat
                               round
                               dense
