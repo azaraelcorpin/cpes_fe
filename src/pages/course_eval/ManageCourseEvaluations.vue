@@ -1336,7 +1336,8 @@ export default {
     navigateToDetails (id) {
       this.$router.push({
         name: 'evaluationDetails',
-        params: { id: id }
+        params: { id },
+        state: { security: id }
       });
     },
 

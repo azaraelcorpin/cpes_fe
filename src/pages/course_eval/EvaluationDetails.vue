@@ -1529,6 +1529,10 @@ export default {
     async fetchDeepEvaluationStructure () {
       this.loading = true;
       const targetId = this.$route.params.id;
+      if (window.history.state?.security !== targetId) {
+        this.$router.back();
+        return;
+      }
 
       if (!targetId) {
         throw new Error('Evaluation id is required.');
