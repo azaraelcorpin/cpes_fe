@@ -247,7 +247,7 @@
                 :disable="!canDeleteEvaluation(props.row)"
                 @click="confirmDeleteEvaluation(props.row)"
               >
-                <q-tooltip>{{ canDeleteEvaluation(props.row) ? 'Remove Evaluation' : 'Only draft evaluations can be removed' }}</q-tooltip>
+                <q-tooltip>{{ canDeleteEvaluation(props.row) ? 'Remove Evaluation' : 'Only OPEN evaluations can be removed' }}</q-tooltip>
               </q-btn>
             </q-td>
           </q-tr>
@@ -268,7 +268,7 @@
             outlined
             emit-value
             map-options
-            :options="statusOptions.map(status => ({ label: status, value: status }))"
+            :options="availableBulkStatuses.map(status => ({ label: status, value: status }))"
             label="New Form Status"
             style="min-width: 180px"
           />
@@ -277,7 +277,7 @@
             color="primary"
             label="Update Status"
             :loading="bulkUpdating"
-            :disable="!bulkEvaluationStatus || bulkUpdating"
+            :disable="!availableBulkStatuses.includes(bulkEvaluationStatus) || bulkUpdating"
             @click="bulkUpdateEvaluationStatus"
           />
         </template>
@@ -391,7 +391,7 @@
           <div
             v-for="lane in pipelineLanes"
             :key="lane.status"
-            class="col-12 col-md-4"
+            class="col-12 col-md-3"
             @dragover.prevent="handleLaneDragOver(lane.status)"
             @drop.prevent="moveEvaluationToStatus(lane.status)"
           >
@@ -431,7 +431,7 @@
                     flat
                     bordered
                     class="pipeline-item"
-                    draggable="true"
+                    :draggable="currentUserRoles.includes('CHAIRPERSON') && ['DRAFTED', 'ACTIVE', 'CLOSED'].includes(String(evaluation.status || '').trim().toUpperCase())"
                     @dragstart="startEvaluationDrag(evaluation)"
                     @dragend="endEvaluationDrag"
                     @click="navigateToDetails(evaluation._id)"
@@ -554,7 +554,7 @@
               outlined
               dense
               :options="statusOptions"
-              :disable="!editing"
+              disable
               label="Initial Deployment State"
               :rules="[requiredValidation]"
             />
@@ -624,11 +624,7 @@ export default {
       evaluationFiltersInitialized: false,
       collegeFilter: null,
       academicYearOptions: [],
-      statusOptions: [
-        'DRAFT',
-        'ACTIVE',
-        'CLOSED'
-      ],
+      statusOptions: ['OPEN', 'DRAFTED', 'ACTIVE', 'CLOSED'],
       semesterOptions: [
         { label: '1st Semester', value: '21' },
         { label: '2nd Semester', value: '22' },
@@ -751,6 +747,16 @@ export default {
       return ['CHAIRPERSON', 'DEAN', 'CCSID', 'VCAA'].find(role =>
         this.currentUserRoles.includes(role)
       ) || '';
+    },
+
+    availableBulkStatuses () {
+      if (this.bulkActionRole !== 'CHAIRPERSON' || !this.selectedEvaluations.length) return [];
+
+      return ['OPEN', 'ACTIVE', 'CLOSED'].filter(status =>
+        this.selectedEvaluations.every(evaluation =>
+          this.canChairpersonTransitionStatus(this.getRowStatus(evaluation), status)
+        )
+      );
     },
 
     bulkActionLabel () {
@@ -960,6 +966,14 @@ export default {
       ) return;
 
       const selectedRows = [...this.selectedEvaluations];
+      if (!this.availableBulkStatuses.includes(this.bulkEvaluationStatus)) {
+        this.$q.notify({
+          type: 'warning',
+          message: 'Allowed chairperson transitions are DRAFTED to ACTIVE, ACTIVE to OPEN or CLOSED, and CLOSED to ACTIVE.'
+        });
+        return;
+      }
+
       const confirmed = await myDialog.confirm(
         this.$q,
         'Confirm Bulk Status Update',
@@ -1092,20 +1106,28 @@ export default {
         course_code: '',
         course_title: '',
         dept_code: deptCode,
-        status: 'DRAFT',
+        status: 'OPEN',
         rating_scale_id: null,
       };
     },
 
     canDeleteEvaluation (evaluation) {
-      return this.canManageEvaluations && String(evaluation?.status || '').toUpperCase() === 'DRAFT';
+      const status = String(evaluation?.status || '').trim().toUpperCase();
+      return this.canManageEvaluations && status === 'OPEN';
     },
 
     getStatusColor (status) {
-      if (status === 'ACTIVE') {
+      const normalizedStatus = String(status || '').trim().toUpperCase();
+      if (normalizedStatus === 'OPEN') {
+        return 'info';
+      }
+      if (normalizedStatus === 'DRAFTED') {
+        return 'warning';
+      }
+      if (normalizedStatus === 'ACTIVE') {
         return 'positive';
       }
-      if (status === 'CLOSED') {
+      if (normalizedStatus === 'CLOSED') {
         return 'negative';
       }
       return 'grey-7';
@@ -1116,7 +1138,18 @@ export default {
     },
 
     getRowStatus (row) {
-      return row.status || row.stage || 'DRAFT';
+      return row.status || row.stage || 'OPEN';
+    },
+
+    canChairpersonTransitionStatus (currentStatus, nextStatus) {
+      const current = String(currentStatus || '').trim().toUpperCase();
+      const next = String(nextStatus || '').trim().toUpperCase();
+
+      return (
+        (current === 'DRAFTED' && next === 'ACTIVE') ||
+        (current === 'ACTIVE' && ['OPEN', 'CLOSED'].includes(next)) ||
+        (current === 'CLOSED' && next === 'ACTIVE')
+      );
     },
 
     clearFilters () {
@@ -1144,24 +1177,50 @@ export default {
       if (!this.draggedEvaluation) return;
 
       const evaluation = this.evaluations.find(
-        item => item._id === this.draggedEvaluation._id
+        item => String(item._id) === String(this.draggedEvaluation._id)
       );
+      const nextStatus = String(status || '').trim().toUpperCase();
 
-      if (evaluation) {
-        evaluation.status = status;
-                try {
-                  const evaluationPayload = evaluation
-                    const confirm = await myDialog.confirm(this.$q, 'Confirm Save', 'Please confirm to save Evaluation');
-                      if (!confirm) return;
-                      const response = await api.updateStatusEvaluation(evaluationPayload)
-                      if(!response.success)
-                        throw new Error(response.error.response.data.message || 'Failed to update evaluation');
-                } catch (error) {
-                  this.saving = false;
-                  this.$q.notify({ type: 'negative', message: error.message || 'Unable to update evaluation. Please try again.' });
-                }
+      try {
+        if (!evaluation) return;
+        if (
+          !this.currentUserRoles.includes('CHAIRPERSON') ||
+          !this.canChairpersonTransitionStatus(this.getRowStatus(evaluation), nextStatus)
+        ) {
+          this.$q.notify({
+            type: 'warning',
+            message: 'Allowed chairperson transitions are DRAFTED to ACTIVE, ACTIVE to OPEN or CLOSED, and CLOSED to ACTIVE.'
+          });
+          return;
+        }
+
+        const confirmed = await myDialog.confirm(
+          this.$q,
+          'Confirm Status Change',
+          `Change this evaluation's status to ${nextStatus}?`
+        );
+        if (!confirmed) return;
+
+        this.saving = true;
+        const response = await api.updateStatusEvaluation({
+          _id: evaluation._id,
+          status: nextStatus
+        });
+        if (!response || response.error || !response.success) {
+          throw new Error(response?.error?.response?.data?.message || 'Failed to update evaluation status.');
+        }
+
+        evaluation.status = nextStatus;
+        this.$q.notify({ type: 'positive', message: `Evaluation status changed to ${nextStatus}.` });
+      } catch (error) {
+        this.$q.notify({
+          type: 'negative',
+          message: error.message || 'Unable to update evaluation. Please try again.'
+        });
+      } finally {
+        this.saving = false;
+        this.endEvaluationDrag();
       }
-      this.endEvaluationDrag();
     },
 
     requiredValidation (value) {
@@ -1223,7 +1282,7 @@ export default {
                 course_code: '',
                 course_title: '',
                 dept_code: this.cookies.get('_UID_')?.dept_code || null,
-                status: 'DRAFT',
+                status: 'OPEN',
                 rating_scale_id: this.courseEvaluationTemplate.rating_scale_id,
               };
               this.editing = false;

@@ -21,8 +21,8 @@
               AY: {{ evaluation.acad_year }} | Semester: {{ formatSemester(evaluation.sem) }} | Dept: {{ evaluation.dept_code }}
             </div>
 
-            <div v-if="evaluation.status === 'ACTIVE'" class="text-caption text-negative text-weight-bold q-mt-xs row items-center">
-              <q-icon name="lock" class="q-mr-xs" /> System Lock: Details are read-only unless the evaluation is in DRAFT status.
+            <div v-if="!isEvaluationEditable" class="text-caption text-negative text-weight-bold q-mt-xs row items-center">
+              <q-icon name="lock" class="q-mr-xs" /> System Lock: Details are read-only unless OPEN or assigned coordinator in DRAFTED.
             </div>
           </div>
           <q-space />
@@ -38,7 +38,7 @@
               {{ evaluation.status }}
             </q-badge>
             <q-btn-dropdown
-              v-if="isChairperson"
+              v-if="isChairperson && availableEvaluationStatusOptions.length"
               dense
               outline
               no-caps
@@ -49,7 +49,7 @@
             >
               <q-list>
                 <q-item
-                  v-for="status in evaluationStatusOptions"
+                  v-for="status in availableEvaluationStatusOptions"
                   :key="status"
                   v-close-popup
                   clickable
@@ -706,6 +706,25 @@
           />
         </div>
       </div>
+
+      <div v-if="showSetDraftFooter" class="action-signoff-bar">
+        <div class="action-signoff-copy">
+          <div class="text-weight-bold">Coordinator controls</div>
+          <div class="text-caption text-grey-7">Set this evaluation to DRAFTED for chairperson review.</div>
+        </div>
+        <div class="action-signoff-controls">
+          <q-btn
+            label="SET DRAFT"
+            icon="edit"
+            unelevated
+            no-caps
+            color="primary"
+            :loading="updatingEvaluationStatus"
+            :disable="updatingEvaluationStatus"
+            @click="updateEvaluationStatus('DRAFTED')"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- 3. RENDER LOADER SKELETON WHILE OBJECT IS NULL -->
@@ -748,7 +767,6 @@ export default {
       loading: false,
       saving: false,
       updatingEvaluationStatus: false,
-      evaluationStatusOptions: ['DRAFT', 'ACTIVE', 'CLOSED'],
       activeTab: this.$route.query?.tab || 'details',
       fetchSummaryStatus: { loading: false, error: null },
 
@@ -827,8 +845,9 @@ export default {
   },
 
   computed: {
-    isDraft () {
-      return this.evaluation?.status === 'DRAFT';
+    isEvaluationEditable () {
+      const status = String(this.evaluation?.status || '').trim().toUpperCase();
+      return status === 'OPEN' || (status === 'DRAFTED' && this.isAssignedCoordinator);
     },
 
     participationRate () {
@@ -929,6 +948,22 @@ export default {
       return this.isAssignedCoordinator && this.actionReportStatus === 'DRAFT' && this.allActionMembersAgreed;
     },
 
+    availableEvaluationStatusOptions () {
+      if (!this.isChairperson) return [];
+
+      const status = String(this.evaluation?.status || '').trim().toUpperCase();
+      if (status === 'DRAFTED') return ['ACTIVE'];
+      if (status === 'ACTIVE') return ['CLOSED', 'OPEN'];
+      if (status === 'CLOSED') return ['ACTIVE'];
+      return [];
+    },
+
+    showSetDraftFooter () {
+      return this.activeTab === 'details' &&
+        String(this.evaluation?.status || '').trim().toUpperCase() === 'OPEN' &&
+        this.isAssignedCoordinator;
+    },
+
     canApproveActionReport () {
       const status = String(this.actionReportStatus || '').trim().toUpperCase();
 
@@ -996,7 +1031,7 @@ export default {
     },
 
     canAssignMembers () {
-      return this.isDraft && (this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN'));
+      return this.isEvaluationEditable && (this.currentUserRoles.includes('CHAIRPERSON') || this.currentUserRoles.includes('ADMIN'));
     },
 
     actionReportIndicators () {
@@ -1242,10 +1277,15 @@ export default {
     },
 
     async updateEvaluationStatus (status) {
-      if (!this.isChairperson || this.updatingEvaluationStatus || !this.evaluation) return;
+      if (this.updatingEvaluationStatus || !this.evaluation) return;
 
       const nextStatus = String(status || '').trim().toUpperCase();
-      if (!this.evaluationStatusOptions.includes(nextStatus) || nextStatus === this.evaluation.status) return;
+      const currentStatus = String(this.evaluation.status || '').trim().toUpperCase();
+      const canCoordinatorSetDraft = nextStatus === 'DRAFTED' &&
+        currentStatus === 'OPEN' &&
+        this.isAssignedCoordinator;
+      const canChairpersonAdvance = this.availableEvaluationStatusOptions.includes(nextStatus);
+      if ((!canCoordinatorSetDraft && !canChairpersonAdvance) || nextStatus === currentStatus) return;
 
       const confirmed = await myDialog.confirm(
         this.$q,
@@ -1346,7 +1386,7 @@ export default {
     },
 
     canManageItems (indicator) {
-      if (!this.isDraft) return false;
+      if (!this.isEvaluationEditable) return false;
       const assignedRole = String(indicator?.assigned_role || '').trim().toUpperCase();
       const editableRoles = ['CHAIRPERSON', 'COORDINATOR'];
       const isAdmin = this.currentUserRoles.includes('ADMIN');
@@ -1591,10 +1631,11 @@ export default {
       }
 
       try {
-        if (String(this.evaluation?.status || '').trim().toUpperCase() === 'DRAFT') {
+        const evaluationStatus = String(this.evaluation?.status || '').trim().toUpperCase();
+        if (['OPEN', 'DRAFTED'].includes(evaluationStatus)) {
           this.responseStats = [];
           this.fetchSummaryStatus.loading = false;
-          this.fetchSummaryStatus.error = 'Summary statistics are only available for evaluations that are not in DRAFT status.';
+          this.fetchSummaryStatus.error = 'Summary statistics are available only for ACTIVE or CLOSED evaluations.';
           return;
         }
         const response = await api.getResponseStatistics(targetId);
@@ -1871,6 +1912,19 @@ export default {
     async submitActionReport () {
       if (!this.canSubmitActionReport || this.signoffSaving) return;
 
+      
+      for (const indicator of this.evaluation.indicators) {
+        const report = this.actionReports.find(item => String(item.indicator_id) === String(indicator.indicator_id));
+        if (!report || !report.action || !report.action.trim()) {
+          myDialog.negative(
+            this.$q,
+            'Incomplete Action Report',
+            `Please provide an action for indicator "${indicator.name || indicator.label || indicator.indicator_name || 'Unnamed Indicator'}" before submitting the action report.`
+          );
+          return;
+        }
+      }
+
       this.signoffSaving = true;
       try {
         const response = await api.submitActionReport(this.evaluation._id);
@@ -2116,10 +2170,17 @@ export default {
     },
 
     getStatusColor (status) {
-      if (status === 'ACTIVE') {
+      const normalizedStatus = String(status || '').trim().toUpperCase();
+      if (normalizedStatus === 'OPEN') {
+        return 'info';
+      }
+      if (normalizedStatus === 'DRAFTED') {
+        return 'warning';
+      }
+      if (normalizedStatus === 'ACTIVE') {
         return 'positive';
       }
-      if (status === 'CLOSED') {
+      if (normalizedStatus === 'CLOSED') {
         return 'negative';
       }
       return 'grey-7';
@@ -2260,7 +2321,7 @@ export default {
     notifyStateLockout () {
       this.$q.notify({
         type: 'warning',
-        message: 'Security Halt: Details are read-only unless the evaluation is in DRAFT status.',
+        message: 'Security Halt: Details are read-only unless OPEN or assigned coordinator in DRAFTED.',
         position: 'top',
         timeout: 2500
       });
@@ -2268,7 +2329,7 @@ export default {
 
     // --- 📋 Tab 1: Indicator Manipulation Contexts ---
     openCreateIndicator () {
-      if (!this.isDraft) {
+      if (!this.isEvaluationEditable) {
         this.notifyStateLockout();
         return;
       }
@@ -2292,7 +2353,7 @@ export default {
     },
 
     openEditIndicator (indicator, index) {
-      if (!this.isDraft) {
+      if (!this.isEvaluationEditable) {
         this.notifyStateLockout();
         return;
       }
@@ -2309,7 +2370,7 @@ export default {
     },
 
     deleteIndicator (index) {
-      if (!this.isDraft) {
+      if (!this.isEvaluationEditable) {
         this.notifyStateLockout();
         return;
       }
@@ -2330,7 +2391,7 @@ export default {
 
     // --- 📋 Tab 1: Sub-Item Prompt Criteria Handling ---
     openCreateItem (parentIndicator) {
-      if (!this.isDraft || !this.canManageItems(parentIndicator)) {
+      if (!this.isEvaluationEditable || !this.canManageItems(parentIndicator)) {
         this.notifyStateLockout();
         return;
       }
@@ -2352,7 +2413,7 @@ export default {
     },
 
     openEditItem (parentIndicator, currentItem, index) {
-      if (!this.isDraft || !this.canManageItems(parentIndicator)) {
+      if (!this.isEvaluationEditable || !this.canManageItems(parentIndicator)) {
         this.notifyStateLockout();
         return;
       }
@@ -2369,7 +2430,7 @@ export default {
     },
 
     async deleteItem (parentIndicator, index) {
-      if (!this.isDraft || !this.canManageItems(parentIndicator)) {
+      if (!this.isEvaluationEditable || !this.canManageItems(parentIndicator)) {
         this.notifyStateLockout();
         return;
       }
