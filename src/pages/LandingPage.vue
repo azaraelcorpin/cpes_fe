@@ -73,7 +73,7 @@
         </div>
         <p class="account-note"><q-icon name="lock" size="14px" /> Only @msugensan.edu.ph accounts are accepted</p>
 
-        <q-expansion-item label="Developer access" icon="terminal" dense class="developer-access">
+        <q-expansion-item label="Developer access" icon="terminal" dense class="developer-access" v-if="showDeveloperAccess">
           <div class="developer-grid">
 
             <q-btn outline dense label="Student" @click="test('denierich.falalimpa@msugensan.edu.ph', 'student')" />
@@ -113,6 +113,7 @@ export default{
   setup(){
           const loading = ref(false);
       const showLoginPanel = ref(true);
+      const showDeveloperAccess = ref(false);
           const $q = useQuasar()
           const { cookies } = useCookies();
           const router = useRouter();
@@ -252,12 +253,35 @@ export default{
         cookies ,
         loading,
         showLoginPanel,
+        showDeveloperAccess,
         role,
     }
   },
   mounted(){
+    window.addEventListener('keydown', this.handleDeveloperAccessShortcut);
     if(this.cookies.isKey('_UID_')){
       this.router.push({name:'dashboard'})
+    }
+  },
+  beforeUnmount () {
+    window.removeEventListener('keydown', this.handleDeveloperAccessShortcut);
+  },
+  methods: {
+    handleDeveloperAccessShortcut (event) {
+      const showAccess = event.key === 'F11' || event.code === 'F11' ||
+        (event.altKey && event.shiftKey && event.code === 'KeyD');
+      const hideAccess = event.key === 'F12' || event.code === 'F12' ||
+        (event.altKey && event.shiftKey && event.code === 'KeyH');
+
+      if (showAccess || hideAccess) {
+        event.preventDefault();
+      }
+
+      if (showAccess) {
+        this.showDeveloperAccess = true;
+      } else if (hideAccess) {
+        this.showDeveloperAccess = false;
+      }
     }
   }
 }
